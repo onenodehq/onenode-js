@@ -1,0 +1,23 @@
+{
+  "name": "@onenodehq/onenode",
+  "version": "0.1.2",
+  "description": "The official JavaScript / TypeScript library for the OneNode API",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/onenodehq/onenode-js.git"
+  },
+  "keywords": [
+    "EmbJSON"
+  ],
+  "author": "OneNode",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/onenodehq/onenode-js/issues"
+  },
+  "homepage": "https://docs.onenode.ai",
+  "access": "public"
+}
