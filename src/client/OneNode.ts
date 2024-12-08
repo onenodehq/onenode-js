@@ -4,10 +4,10 @@ export class OneNode {
   private projectId: string;
   private apiKey: string;
 
-  constructor(projectId?: string, apiKey?: string) {
+  constructor() {
     // Ensure that environment variables are checked and valid
-    this.projectId = projectId || process.env.ONENODE_PROJECT_ID || "";
-    this.apiKey = apiKey || process.env.ONENODE_API_KEY || "";
+    this.projectId = process.env.ONENODE_PROJECT_ID || "";
+    this.apiKey = process.env.ONENODE_API_KEY || "";
 
     // Validate that both values are provided
     if (!this.projectId) {
