@@ -82,4 +82,148 @@ export class Collection {
       throw error;
     }
   }
+
+  /**
+   * Update documents in the collection.
+   * @param filter - The filter to match the documents to update
+   * @param update - The update operations to apply
+   * @param upsert - Optional upsert flag (default: false)
+   */
+  public async update(
+    filter: object,
+    update: object,
+    upsert: boolean = false
+  ): Promise<object> {
+    const url = this.getCollectionUrl();
+    const headers = this.getHeaders();
+    const data = { filter, update, upsert };
+
+    try {
+      const response = await fetch(url, {
+        method: "PUT",
+        headers,
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        throw new Error(`API call failed: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      return result;
+    } catch (error) {
+      console.error("Error updating documents:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete documents from the collection.
+   * @param filter - The filter to match the documents to delete
+   */
+  public async delete(filter: object): Promise<object> {
+    const url = this.getCollectionUrl();
+    const headers = this.getHeaders();
+    const data = { filter };
+
+    try {
+      const response = await fetch(url, {
+        method: "DELETE",
+        headers,
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        throw new Error(`API call failed: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      return result;
+    } catch (error) {
+      console.error("Error deleting documents:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Find documents in the collection.
+   * @param filter - The filter to match the documents
+   * @param projection - Optional projection to include/exclude fields
+   * @param sort - Optional sort order
+   * @param limit - Optional maximum number of documents to return
+   * @param skip - Optional number of documents to skip
+   */
+  public async find(
+    filter: object,
+    projection?: object,
+    sort?: object,
+    limit?: number,
+    skip?: number
+  ): Promise<object[]> {
+    const url = `${this.getCollectionUrl()}/find`;
+    const headers = this.getHeaders();
+    const data = { filter, projection, sort, limit, skip };
+
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        throw new Error(`API call failed: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      return result;
+    } catch (error) {
+      console.error("Error finding documents:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Query documents in the collection using embeddings.
+   * @param query - The query text to search for
+   * @param embModel - The embedding model to use
+   * @param topK - The number of top matches to return
+   * @param includeValues - Whether to include embedding values in the response
+   * @param projection - Optional projection for included fields
+   */
+  public async query(
+    query: string,
+    embModel: string,
+    topK: number,
+    includeValues: boolean = false,
+    projection?: { mode: string; fields: string[] }
+  ): Promise<object[]> {
+    const url = `${this.getCollectionUrl()}/query`;
+    const headers = this.getHeaders();
+    const data = {
+      query,
+      emb_model: embModel,
+      top_k: topK,
+      include_values: includeValues,
+      projection,
+    };
+
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        throw new Error(`API call failed: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      return result;
+    } catch (error) {
+      console.error("Error querying documents:", error);
+      throw error;
+    }
+  }
 }
