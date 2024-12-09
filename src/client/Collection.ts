@@ -1,3 +1,5 @@
+import { EmbText } from "../models/embText";
+
 export class Collection {
   private apiKey: string;
   private projectId: string;
@@ -27,6 +29,19 @@ export class Collection {
     };
   }
 
+  private transformEmbText(document: any): any {
+    if (document && typeof document === "object") {
+      for (const key in document) {
+        if (document[key] instanceof EmbText) {
+          document[key] = document[key].toJSON();
+        } else if (typeof document[key] === "object") {
+          this.transformEmbText(document[key]);
+        }
+      }
+    }
+    return document;
+  }
+
   /**
    * Insert one document into the collection.
    * @param document - The document to insert
@@ -34,7 +49,8 @@ export class Collection {
   public async insertOne(document: object): Promise<object> {
     const url = this.getCollectionUrl();
     const headers = this.getHeaders();
-    const data = { documents: [document] };
+    const transformedDocument = this.transformEmbText(document);
+    const data = { documents: [transformedDocument] };
 
     try {
       const response = await fetch(url, {
@@ -62,7 +78,10 @@ export class Collection {
   public async insertMany(documents: object[]): Promise<object> {
     const url = this.getCollectionUrl();
     const headers = this.getHeaders();
-    const data = { documents: documents };
+    const transformedDocuments = documents.map((doc) =>
+      this.transformEmbText(doc)
+    );
+    const data = { documents: transformedDocuments };
 
     try {
       const response = await fetch(url, {
@@ -96,7 +115,8 @@ export class Collection {
   ): Promise<object> {
     const url = this.getCollectionUrl();
     const headers = this.getHeaders();
-    const data = { filter, update, upsert };
+    const transformedUpdate = this.transformEmbText(update);
+    const data = { filter, update: transformedUpdate, upsert };
 
     try {
       const response = await fetch(url, {
