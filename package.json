@@ -1,0 +1,47 @@
+{
+  "name": "capybaradb",
+  "version": "0.1.0",
+  "description": "The official JavaScript / TypeScript library for CapybaraDB",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/esm/index.d.ts",
+  "type": "module",
+"scripts": {
+  "build:esm": "tsc --project tsconfig.esm.json",
+  "build:cjs": "tsc --project tsconfig.cjs.json",
+  "build:postprocess": "node scripts/add-extensions.js",
+  "build": "npm run build:esm && npm run build:cjs && npm run build:postprocess",
+  "test": "echo \"Error: no test specified\" && exit 1",
+  "prepublishOnly": "npm run build"
+},
+  "exports": {
+    ".": {
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/capybaradb/capybaradb-js.git"
+  },
+  "files": [
+    "dist/**/*",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "EmbJSON"
+  ],
+  "author": "CapybaraDB",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/capybaradb/capybaradb-js/issues"
+  },
+  "homepage": "https://docs.capybaradb.co",
+  "access": "public",
+  "devDependencies": {
+    "@types/node": "^22.10.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.2"
+  }
+}
