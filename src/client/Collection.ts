@@ -19,7 +19,7 @@ export class Collection {
   }
 
   private getCollectionUrl(): string {
-    return `https://api.capybaradb.co/v1/db/${this.projectId}_${this.dbName}/collection/${this.collectionName}/document`;
+    return `https://api.capybaradb.co/v0/db/${this.projectId}_${this.dbName}/collection/${this.collectionName}/document`;
   }
 
   private getHeaders(): HeadersInit {

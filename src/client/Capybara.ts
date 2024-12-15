@@ -1,6 +1,6 @@
 import { Database } from "./Database";
 
-export class Capybara {
+export class CapybaraDB {
   private projectId: string;
   private apiKey: string;
 
