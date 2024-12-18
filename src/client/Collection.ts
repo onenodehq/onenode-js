@@ -1,5 +1,33 @@
 import { EmbText } from "../models/embText";
 
+class APIClientError extends Error {
+  constructor(public statusCode: number, public message: string) {
+    super(message);
+    this.name = "APIClientError";
+  }
+}
+
+class AuthenticationError extends APIClientError {
+  constructor(statusCode: number, message: string) {
+    super(statusCode, message);
+    this.name = "AuthenticationError";
+  }
+}
+
+class ClientRequestError extends APIClientError {
+  constructor(statusCode: number, message: string) {
+    super(statusCode, message);
+    this.name = "ClientRequestError";
+  }
+}
+
+class ServerError extends APIClientError {
+  constructor(statusCode: number, message: string) {
+    super(statusCode, message);
+    this.name = "ServerError";
+  }
+}
+
 export class Collection {
   private apiKey: string;
   private projectId: string;
@@ -42,40 +70,31 @@ export class Collection {
     return document;
   }
 
-  /**
-   * Insert one document into the collection.
-   * @param document - The document to insert
-   */
-  public async insertOne(document: object): Promise<object> {
-    const url = this.getCollectionUrl();
-    const headers = this.getHeaders();
-    const transformedDocument = this.transformEmbText(document);
-    const data = { documents: [transformedDocument] };
+  private async handleResponse(response: Response): Promise<any> {
+    if (response.ok) {
+      return response.json();
+    }
 
+    let errorData: any;
     try {
-      const response = await fetch(url, {
-        method: "POST",
-        headers,
-        body: JSON.stringify(data),
-      });
+      errorData = await response.json();
+    } catch {
+      throw new APIClientError(response.status, response.statusText);
+    }
 
-      if (!response.ok) {
-        throw new Error(`API call failed: ${response.statusText}`);
-      }
+    const { code = response.status, message = "An unknown error occurred." } =
+      errorData;
 
-      const result = await response.json();
-      return result;
-    } catch (error) {
-      console.error("Error inserting document:", error);
-      throw error;
+    if (code === 401) {
+      throw new AuthenticationError(code, message);
+    } else if (code >= 400 && code < 500) {
+      throw new ClientRequestError(code, message);
+    } else {
+      throw new ServerError(code, message);
     }
   }
 
-  /**
-   * Insert many documents into the collection.
-   * @param documents - The documents to insert
-   */
-  public async insertMany(documents: object[]): Promise<object> {
+  public async insert(documents: object[]): Promise<object> {
     const url = this.getCollectionUrl();
     const headers = this.getHeaders();
     const transformedDocuments = documents.map((doc) =>
@@ -83,31 +102,14 @@ export class Collection {
     );
     const data = { documents: transformedDocuments };
 
-    try {
-      const response = await fetch(url, {
-        method: "POST",
-        headers,
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) {
-        throw new Error(`API call failed: ${response.statusText}`);
-      }
-
-      const result = await response.json();
-      return result;
-    } catch (error) {
-      console.error("Error inserting documents:", error);
-      throw error;
-    }
+    const response = await fetch(url, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(data),
+    });
+    return this.handleResponse(response);
   }
 
-  /**
-   * Update documents in the collection.
-   * @param filter - The filter to match the documents to update
-   * @param update - The update operations to apply
-   * @param upsert - Optional upsert flag (default: false)
-   */
   public async update(
     filter: object,
     update: object,
@@ -118,61 +120,27 @@ export class Collection {
     const transformedUpdate = this.transformEmbText(update);
     const data = { filter, update: transformedUpdate, upsert };
 
-    try {
-      const response = await fetch(url, {
-        method: "PUT",
-        headers,
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) {
-        throw new Error(`API call failed: ${response.statusText}`);
-      }
-
-      const result = await response.json();
-      return result;
-    } catch (error) {
-      console.error("Error updating documents:", error);
-      throw error;
-    }
+    const response = await fetch(url, {
+      method: "PUT",
+      headers,
+      body: JSON.stringify(data),
+    });
+    return this.handleResponse(response);
   }
 
-  /**
-   * Delete documents from the collection.
-   * @param filter - The filter to match the documents to delete
-   */
   public async delete(filter: object): Promise<object> {
     const url = this.getCollectionUrl();
     const headers = this.getHeaders();
     const data = { filter };
 
-    try {
-      const response = await fetch(url, {
-        method: "DELETE",
-        headers,
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) {
-        throw new Error(`API call failed: ${response.statusText}`);
-      }
-
-      const result = await response.json();
-      return result;
-    } catch (error) {
-      console.error("Error deleting documents:", error);
-      throw error;
-    }
+    const response = await fetch(url, {
+      method: "DELETE",
+      headers,
+      body: JSON.stringify(data),
+    });
+    return this.handleResponse(response);
   }
 
-  /**
-   * Find documents in the collection.
-   * @param filter - The filter to match the documents
-   * @param projection - Optional projection to include/exclude fields
-   * @param sort - Optional sort order
-   * @param limit - Optional maximum number of documents to return
-   * @param skip - Optional number of documents to skip
-   */
   public async find(
     filter: object,
     projection?: object,
@@ -184,33 +152,14 @@ export class Collection {
     const headers = this.getHeaders();
     const data = { filter, projection, sort, limit, skip };
 
-    try {
-      const response = await fetch(url, {
-        method: "POST",
-        headers,
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) {
-        throw new Error(`API call failed: ${response.statusText}`);
-      }
-
-      const result = await response.json();
-      return result;
-    } catch (error) {
-      console.error("Error finding documents:", error);
-      throw error;
-    }
+    const response = await fetch(url, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(data),
+    });
+    return this.handleResponse(response);
   }
 
-  /**
-   * Query documents in the collection using embeddings.
-   * @param query - The query text to search for
-   * @param embModel - The embedding model to use
-   * @param topK - The number of top matches to return
-   * @param includeValues - Whether to include embedding values in the response
-   * @param projection - Optional projection for included fields
-   */
   public async query(
     query: string,
     embModel: string,
@@ -228,22 +177,11 @@ export class Collection {
       projection,
     };
 
-    try {
-      const response = await fetch(url, {
-        method: "POST",
-        headers,
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) {
-        throw new Error(`API call failed: ${response.statusText}`);
-      }
-
-      const result = await response.json();
-      return result;
-    } catch (error) {
-      console.error("Error querying documents:", error);
-      throw error;
-    }
+    const response = await fetch(url, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(data),
+    });
+    return this.handleResponse(response);
   }
 }
