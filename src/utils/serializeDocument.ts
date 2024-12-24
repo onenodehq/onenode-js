@@ -1,4 +1,4 @@
-import { EmbText } from "../models/embText";
+import { EmbText } from "../embJson/embText";
 
 export function serializeDocument(document: any): any {
   if (Array.isArray(document)) {

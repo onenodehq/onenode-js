@@ -1,4 +1,4 @@
-import { EmbText } from "../models/embText";
+import { EmbText } from "../embJson/embText";
 
 class APIClientError extends Error {
   constructor(public statusCode: number, public message: string) {

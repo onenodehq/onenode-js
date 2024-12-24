@@ -1,19 +1,19 @@
 {
   "name": "capybaradb",
-  "version": "0.1.2",
+  "version": "0.1.4",
   "description": "The official JavaScript / TypeScript library for CapybaraDB",
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",
   "types": "./dist/esm/index.d.ts",
   "type": "module",
-"scripts": {
-  "build:esm": "tsc --project tsconfig.esm.json",
-  "build:cjs": "tsc --project tsconfig.cjs.json",
-  "build:postprocess": "node scripts/add-extensions.js",
-  "build": "npm run build:esm && npm run build:cjs && npm run build:postprocess",
-  "test": "echo \"Error: no test specified\" && exit 1",
-  "prepublishOnly": "npm run build"
-},
+  "scripts": {
+    "build:esm": "tsc --project tsconfig.esm.json",
+    "build:cjs": "tsc --project tsconfig.cjs.json",
+    "build:postprocess": "node scripts/add-extensions.js",
+    "build": "npm run build:esm && npm run build:cjs && npm run build:postprocess",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prepublishOnly": "npm run build"
+  },
   "exports": {
     ".": {
       "import": "./dist/esm/index.js",
@@ -43,5 +43,8 @@
     "@types/node": "^22.10.1",
     "ts-node": "^10.9.2",
     "typescript": "^5.7.2"
+  },
+  "dependencies": {
+    "bson": "^6.10.1"
   }
 }
