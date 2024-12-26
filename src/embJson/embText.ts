@@ -80,21 +80,18 @@ export class EmbText {
    * Defaults are applied if any properties are missing.
    */
   public static fromJSON(data: Record<string, any>): EmbText {
-    const embTextData = data["@embText"] ?? {};
-
-    const text = embTextData["text"];
+    const text = data["text"];
     if (text === undefined || text === null) {
       throw new Error("JSON data must include 'text' under '@embText'.");
     }
 
-    const chunks = embTextData["chunks"] || [];
-    const embModel =
-      embTextData["emb_model"] || EmbModels.TEXT_EMBEDDING_3_SMALL;
-    const maxChunkSize = embTextData["max_chunk_size"] || 200;
-    const chunkOverlap = embTextData["chunk_overlap"] || 20;
-    const isSeparatorRegex = embTextData["is_separator_regex"] || false;
-    const separators = embTextData["separators"] || null;
-    const keepSeparator = embTextData["keep_separator"] || false;
+    const chunks = data["chunks"] || [];
+    const embModel = data["emb_model"] || EmbModels.TEXT_EMBEDDING_3_SMALL;
+    const maxChunkSize = data["max_chunk_size"] || 200;
+    const chunkOverlap = data["chunk_overlap"] || 20;
+    const isSeparatorRegex = data["is_separator_regex"] || false;
+    const separators = data["separators"] || null;
+    const keepSeparator = data["keep_separator"] || false;
 
     return new EmbText(
       text,
