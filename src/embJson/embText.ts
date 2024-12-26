@@ -10,6 +10,12 @@ export class EmbText {
   private separators: string[] | null;
   private keepSeparator: boolean;
 
+  private static SUPPORTED_EMB_MODELS: string[] = [
+    EmbModels.TEXT_EMBEDDING_3_SMALL,
+    EmbModels.TEXT_EMBEDDING_3_LARGE,
+    EmbModels.TEXT_EMBEDDING_ADA_002,
+  ];
+
   constructor(
     text: string,
     chunks: string[] = [],
@@ -48,12 +54,7 @@ export class EmbText {
    * Validate that 'embModel' is in the supported list
    */
   private static isValidEmbModel(embModel: string): boolean {
-    const supportedModels: string[] = [
-      EmbModels.TEXT_EMBEDDING_3_SMALL,
-      EmbModels.TEXT_EMBEDDING_3_LARGE,
-      EmbModels.TEXT_EMBEDDING_ADA_002,
-    ];
-    return supportedModels.includes(embModel);
+    return EmbText.SUPPORTED_EMB_MODELS.includes(embModel);
   }
 
   /**
@@ -79,26 +80,38 @@ export class EmbText {
    * Defaults are applied if any properties are missing.
    */
   public static fromJSON(data: Record<string, any>): EmbText {
-    const {
-      text,
-      chunks = [],
-      emb_model = EmbModels.TEXT_EMBEDDING_3_SMALL,
-      max_chunk_size = 200,
-      chunk_overlap = 20,
-      is_separator_regex = false,
-      separators = null,
-      keep_separator = false,
-    } = data["@embText"] ?? {};
+    const embTextData = data["@embText"] ?? {};
+
+    const text = embTextData["text"];
+    if (text === undefined || text === null) {
+      throw new Error("JSON data must include 'text' under '@embText'.");
+    }
+
+    const chunks = embTextData["chunks"] || [];
+    const embModel =
+      embTextData["emb_model"] || EmbModels.TEXT_EMBEDDING_3_SMALL;
+    const maxChunkSize = embTextData["max_chunk_size"] || 200;
+    const chunkOverlap = embTextData["chunk_overlap"] || 20;
+    const isSeparatorRegex = embTextData["is_separator_regex"] || false;
+    const separators = embTextData["separators"] || null;
+    const keepSeparator = embTextData["keep_separator"] || false;
 
     return new EmbText(
       text,
       chunks,
-      emb_model,
-      max_chunk_size,
-      chunk_overlap,
-      is_separator_regex,
+      embModel,
+      maxChunkSize,
+      chunkOverlap,
+      isSeparatorRegex,
       separators,
-      keep_separator
+      keepSeparator
     );
+  }
+
+  /**
+   * String representation of the EmbText instance
+   */
+  public toString(): string {
+    return `EmbText(\"${this.text}\")`;
   }
 }

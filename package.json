@@ -1,6 +1,6 @@
 {
   "name": "capybaradb",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "The official JavaScript / TypeScript library for CapybaraDB",
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",

@@ -1,8 +1,26 @@
 import { EmbText } from "../embJson/embText";
 
+const BSON_SERIALIZERS: Record<string, (v: any) => any> = {
+  EmbText: (v: EmbText) => ({ "@embText": v.toJSON() }),
+  ObjectId: (v: any) => ({ $oid: v.toString() }),
+  Date: (v: Date) => ({ $date: v.toISOString() }),
+  Decimal128: (v: any) => ({ $numberDecimal: v.toString() }),
+  Binary: (v: any) => ({ $binary: v.toString("hex") }),
+  RegExp: (v: RegExp) => ({ $regex: v.source, $options: v.flags }),
+  Code: (v: any) => ({ $code: v.toString() }),
+  Timestamp: (v: any) => ({ $timestamp: { t: v.t, i: v.i } }),
+  MinKey: () => ({ $minKey: 1 }),
+  MaxKey: () => ({ $maxKey: 1 }),
+};
+
 class APIClientError extends Error {
-  constructor(public statusCode: number, public message: string) {
+  public statusCode: number;
+  public message: string;
+
+  constructor(statusCode: number, message: string) {
     super(message);
+    this.statusCode = statusCode;
+    this.message = message;
     this.name = "APIClientError";
   }
 }
@@ -57,55 +75,58 @@ export class Collection {
     };
   }
 
-  private transformEmbText(document: any): any {
-    if (document && typeof document === "object") {
-      for (const key in document) {
-        if (document[key] instanceof EmbText) {
-          document[key] = document[key].toJSON();
-        } else if (typeof document[key] === "object") {
-          this.transformEmbText(document[key]);
-        }
-      }
+  private serialize(value: any): any {
+    if (
+      value === null ||
+      ["string", "number", "boolean"].includes(typeof value)
+    ) {
+      return value;
     }
-    return document;
+    if (Array.isArray(value)) {
+      return value.map(this.serialize.bind(this));
+    }
+    if (value instanceof EmbText) {
+      return BSON_SERIALIZERS.EmbText(value);
+    }
+    const serializer = BSON_SERIALIZERS[value.constructor?.name];
+    if (serializer) {
+      return serializer(value);
+    }
+    if (typeof value === "object") {
+      const serializedObj: Record<string, any> = {};
+      for (const key in value) {
+        serializedObj[key] = this.serialize(value[key]);
+      }
+      return serializedObj;
+    }
+    throw new TypeError(`Unsupported BSON type: ${typeof value}`);
   }
 
   private async handleResponse(response: Response): Promise<any> {
     if (response.ok) {
       return response.json();
     }
-
     let errorData: any;
     try {
       errorData = await response.json();
     } catch {
       throw new APIClientError(response.status, response.statusText);
     }
-
     const { code = response.status, message = "An unknown error occurred." } =
       errorData;
-
-    if (code === 401) {
-      throw new AuthenticationError(code, message);
-    } else if (code >= 400 && code < 500) {
-      throw new ClientRequestError(code, message);
-    } else {
-      throw new ServerError(code, message);
-    }
+    if (code === 401) throw new AuthenticationError(code, message);
+    if (code >= 400 && code < 500) throw new ClientRequestError(code, message);
+    throw new ServerError(code, message);
   }
 
   public async insert(documents: object[]): Promise<object> {
     const url = this.getCollectionUrl();
     const headers = this.getHeaders();
-    const transformedDocuments = documents.map((doc) =>
-      this.transformEmbText(doc)
-    );
-    const data = { documents: transformedDocuments };
-
+    const serializedDocs = documents.map(this.serialize.bind(this));
     const response = await fetch(url, {
       method: "POST",
       headers,
-      body: JSON.stringify(data),
+      body: JSON.stringify({ documents: serializedDocs }),
     });
     return this.handleResponse(response);
   }
@@ -117,9 +138,11 @@ export class Collection {
   ): Promise<object> {
     const url = this.getCollectionUrl();
     const headers = this.getHeaders();
-    const transformedUpdate = this.transformEmbText(update);
-    const data = { filter, update: transformedUpdate, upsert };
-
+    const data = {
+      filter: this.serialize(filter),
+      update: this.serialize(update),
+      upsert,
+    };
     const response = await fetch(url, {
       method: "PUT",
       headers,
@@ -131,12 +154,10 @@ export class Collection {
   public async delete(filter: object): Promise<object> {
     const url = this.getCollectionUrl();
     const headers = this.getHeaders();
-    const data = { filter };
-
     const response = await fetch(url, {
       method: "DELETE",
       headers,
-      body: JSON.stringify(data),
+      body: JSON.stringify({ filter: this.serialize(filter) }),
     });
     return this.handleResponse(response);
   }
@@ -150,8 +171,13 @@ export class Collection {
   ): Promise<object[]> {
     const url = `${this.getCollectionUrl()}/find`;
     const headers = this.getHeaders();
-    const data = { filter, projection, sort, limit, skip };
-
+    const data = {
+      filter: this.serialize(filter),
+      projection,
+      sort,
+      limit,
+      skip,
+    };
     const response = await fetch(url, {
       method: "POST",
       headers,
@@ -162,10 +188,10 @@ export class Collection {
 
   public async query(
     query: string,
-    embModel: string,
-    topK: number,
-    includeValues: boolean = false,
-    projection?: { mode: string; fields: string[] }
+    embModel?: string,
+    topK?: number,
+    includeValues?: boolean,
+    projection?: object
   ): Promise<object[]> {
     const url = `${this.getCollectionUrl()}/query`;
     const headers = this.getHeaders();
@@ -176,7 +202,6 @@ export class Collection {
       include_values: includeValues,
       projection,
     };
-
     const response = await fetch(url, {
       method: "POST",
       headers,
