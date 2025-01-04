@@ -354,25 +354,37 @@ export class Collection {
    * Query for documents using semantic search with optional embeddings, top_k, etc.
    */
   public async query(
-    query: string,
-    embModel?: string,
-    topK?: number,
-    includeValues?: boolean,
-    projection?: unknown
+    query: string, // Positional argument
+    options?: {
+      embModel?: string;
+      topK?: number;
+      includeValues?: boolean;
+      projection?: Record<string, unknown>;
+    }
   ): Promise<unknown[]> {
     const url = `${this.getCollectionUrl()}/query`;
     const headers = this.getHeaders();
 
+    // Build the data object dynamically
+    const data: Record<string, unknown> = { query };
+
+    if (options?.embModel != null) {
+      data["emb_model"] = options.embModel;
+    }
+    if (options?.topK != null) {
+      data["top_k"] = options.topK;
+    }
+    if (options?.includeValues != null) {
+      data["include_values"] = options.includeValues;
+    }
+    if (options?.projection != null) {
+      data["projection"] = options.projection;
+    }
+
     const response = await fetch(url, {
       method: "POST",
       headers,
-      body: JSON.stringify({
-        query,
-        emb_model: embModel,
-        top_k: topK,
-        include_values: includeValues,
-        projection,
-      }),
+      body: JSON.stringify(data),
     });
 
     return this.handleResponse(response) as Promise<unknown[]>;
