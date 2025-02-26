@@ -2,6 +2,9 @@ export { CapybaraDB } from "./client/Capybara";
 export { Database } from "./client/Database";
 export { Collection } from "./client/Collection";
 export { EmbText } from "./embJson/embText";
+export { EmbImage } from "./embJson/embImage";
+export { EmbModels } from "./embJson/embModels";
+export { VisionModels } from "./embJson/visionModels";
 export {
   ObjectId,
   Binary,
