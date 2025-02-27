@@ -11,11 +11,23 @@ import { EmbText } from "../embJson/embText";
 
 /**
  * Common interface for a function that serializes a known BSON type into a JSON-friendly object.
+ * Used for converting complex BSON types to formats that can be transmitted over HTTP.
  */
 type SerializerFunction = (v: any) => Record<string, any>;
 
 /**
  * Map specific BSON types (and EmbText) to their serialization logic.
+ * 
+ * This mapping enables automatic conversion of complex data types when sending data to CapybaraDB:
+ * - EmbText: Special CapybaraDB type for text that will be automatically embedded
+ * - ObjectId: MongoDB-style unique identifiers
+ * - Date: JavaScript Date objects
+ * - Decimal128: High-precision decimal numbers
+ * - Binary: Binary data
+ * - RegExp: Regular expressions
+ * - Code: JavaScript code
+ * - Timestamp: Precise timestamps
+ * - MinKey/MaxKey: Special BSON types for comparison operations
  */
 const BSON_SERIALIZERS: Record<string, SerializerFunction> = {
   EmbText: (v: EmbText) => ({ "@embText": v.toJSON() }),
@@ -34,6 +46,9 @@ const BSON_SERIALIZERS: Record<string, SerializerFunction> = {
 
 /**
  * Base API client error class.
+ * 
+ * Provides a foundation for more specific error types with status codes and messages.
+ * All API errors extend from this class.
  */
 class APIClientError extends Error {
   constructor(
@@ -48,6 +63,9 @@ class APIClientError extends Error {
 
 /**
  * Error class for authentication issues.
+ * 
+ * Thrown when there are problems with API keys or authentication tokens.
+ * Typically occurs with status code 401.
  */
 class AuthenticationError extends APIClientError {
   constructor(statusCode: number, message: string) {
@@ -59,6 +77,9 @@ class AuthenticationError extends APIClientError {
 
 /**
  * Error class for client-side issues (4xx).
+ * 
+ * Thrown for problems like invalid parameters, missing required fields,
+ * or other client-side validation errors.
  */
 class ClientRequestError extends APIClientError {
   constructor(statusCode: number, message: string) {
@@ -70,6 +91,9 @@ class ClientRequestError extends APIClientError {
 
 /**
  * Error class for server-side issues (5xx).
+ * 
+ * Thrown when the CapybaraDB service encounters internal errors,
+ * is unavailable, or otherwise cannot process a valid request.
  */
 class ServerError extends APIClientError {
   constructor(statusCode: number, message: string) {
@@ -80,15 +104,78 @@ class ServerError extends APIClientError {
 }
 
 /**
- * Main Collection class that handles serialization, deserialization,
- * and API requests to CapybaraDB.
+ * Collection - Represents a collection in CapybaraDB
+ * 
+ * The Collection class is the primary interface for performing operations on documents:
+ * - insert: Add new documents to the collection
+ * - update: Modify existing documents
+ * - delete: Remove documents
+ * - find: Retrieve documents based on filters
+ * - query: Perform semantic searches on embedded text fields
+ * 
+ * Collections in CapybaraDB are similar to collections in MongoDB or tables in SQL databases.
+ * They store documents (JSON objects) that can contain embedded text fields for semantic search.
+ * 
+ * This class handles:
+ * 1. Serialization of complex data types (BSON, EmbText) for API transmission
+ * 2. Deserialization of API responses back into appropriate JavaScript types
+ * 3. Error handling with specific error types
+ * 4. HTTP communication with the CapybaraDB API
+ * 
+ * Usage:
+ * ```typescript
+ * import { CapybaraDB, EmbText } from "capybaradb";
+ * 
+ * const client = new CapybaraDB();
+ * const collection = client.db("my_database").collection("my_collection");
+ * 
+ * // Insert documents
+ * await collection.insert([
+ *   { 
+ *     title: "Document with embedded text",
+ *     content: new EmbText("This text will be automatically embedded for semantic search")
+ *   }
+ * ]);
+ * 
+ * // Find documents by exact match
+ * const docs = await collection.find({ title: "Document with embedded text" });
+ * 
+ * // Perform semantic search
+ * const results = await collection.query("embedded text search");
+ * ```
  */
 export class Collection {
+  /**
+   * API key for authentication with CapybaraDB
+   */
   private readonly apiKey: string;
+  
+  /**
+   * Project ID that identifies your CapybaraDB project
+   */
   private readonly projectId: string;
+  
+  /**
+   * Name of the database containing this collection
+   */
   private readonly dbName: string;
+  
+  /**
+   * Name of this collection
+   */
   private readonly collectionName: string;
 
+  /**
+   * Creates a new Collection instance.
+   * 
+   * Note: You typically don't need to create this directly.
+   * Instead, use the `collection()` method on a Database instance.
+   * 
+   * @param apiKey - API key for authentication
+   * @param projectId - Project ID that identifies your CapybaraDB project
+   * @param dbName - Name of the database containing this collection
+   * @param collectionName - Name of this collection
+   */
   constructor(
     apiKey: string,
     projectId: string,
@@ -264,6 +351,14 @@ export class Collection {
 
   /**
    * Insert one or more documents into the collection.
+   * 
+   * Note: When inserting documents with EmbText or EmbImage fields, there will be a short delay
+   * (typically a few seconds) before these documents become available for semantic search.
+   * This is because CapybaraDB processes embeddings asynchronously on the server side after
+   * the document is stored.
+   * 
+   * @param documents - Array of documents to insert
+   * @returns Promise resolving to the insertion result
    */
   public async insert(documents: unknown[]): Promise<unknown> {
     const url = this.getCollectionUrl();

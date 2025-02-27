@@ -1,23 +1,107 @@
 import { EmbModels } from "./embModels";
 import { VisionModels } from "./visionModels";
 
+/**
+ * EmbImage - A specialized data type for storing and processing images in CapybaraDB
+ * 
+ * EmbImage enables multimodal capabilities by storing images that can be:
+ * 1. Processed by vision models to extract textual descriptions
+ * 2. Embedded for vector search (using the extracted descriptions)
+ * 3. Stored alongside other document data
+ * 
+ * When stored in the database, the image is processed asynchronously in the background:
+ * - If a vision model is specified, the image is analyzed to generate textual descriptions
+ * - If an embedding model is specified, these descriptions are embedded for semantic search
+ * - The results are stored in the 'chunks' property
+ * 
+ * Usage:
+ * ```typescript
+ * import { CapybaraDB, EmbImage, VisionModels } from "capybaradb";
+ * import fs from "fs";
+ * 
+ * // Read an image file and convert to base64
+ * const imageBuffer = fs.readFileSync("path/to/image.jpg");
+ * const base64Image = imageBuffer.toString("base64");
+ * 
+ * // Create a document with an EmbImage field
+ * const document = {
+ *   title: "Image Document",
+ *   image: new EmbImage(
+ *     base64Image,
+ *     [], // chunks - leave empty, will be populated by the database
+ *     null, // embModel - can be null if only using vision model
+ *     VisionModels.GPT_4O // visionModel - for image understanding
+ *   )
+ * };
+ * 
+ * // Insert into CapybaraDB
+ * const client = new CapybaraDB();
+ * await client.db("my_database").collection("my_collection").insert([document]);
+ * 
+ * // Later, you can perform semantic searches that include image content
+ * ```
+ */
 export class EmbImage {
+  /**
+   * The base64-encoded image data
+   */
   private data: string;
+  
+  /**
+   * The text chunks generated from the image by the vision model
+   * This is auto-populated by the database and should not be set directly by users
+   */
   private chunks: string[];
+  
+  /**
+   * The embedding model to use for generating embeddings from the text chunks
+   * Can be null if only using a vision model without embedding
+   */
   private embModel: string | null;
+  
+  /**
+   * The vision model to use for analyzing the image and generating text descriptions
+   * Can be null if only storing the image without analysis
+   */
   private visionModel: string | null;
+  
+  /**
+   * Maximum character length for each text chunk when processing vision model output
+   */
   private maxChunkSize: number;
+  
+  /**
+   * Number of overlapping characters between consecutive chunks
+   */
   private chunkOverlap: number;
+  
+  /**
+   * Whether to treat separators as regex patterns
+   */
   private isSeparatorRegex: boolean;
+  
+  /**
+   * List of separator strings or regex patterns used to split the text
+   */
   private separators: string[] | null;
+  
+  /**
+   * Whether to keep separators in the chunked text
+   */
   private keepSeparator: boolean;
 
+  /**
+   * List of supported embedding models for processing text chunks
+   */
   private static SUPPORTED_EMB_MODELS: string[] = [
     EmbModels.TEXT_EMBEDDING_3_SMALL,
     EmbModels.TEXT_EMBEDDING_3_LARGE,
     EmbModels.TEXT_EMBEDDING_ADA_002,
   ];
 
+  /**
+   * List of supported vision models for analyzing images
+   */
   private static SUPPORTED_VISION_MODELS: string[] = [
     VisionModels.GPT_4O_MINI,
     VisionModels.GPT_4O,
@@ -25,6 +109,22 @@ export class EmbImage {
     VisionModels.GPT_O1,
   ];
 
+  /**
+   * Creates a new EmbImage instance for image storage and processing.
+   * 
+   * @param data - Base64-encoded image data. Must be a non-empty string.
+   * @param chunks - The text chunks generated from the image. This is auto-populated by the database
+   *                 and should be left empty when creating a new EmbImage instance.
+   * @param embModel - The embedding model to use for text chunks. Can be null if only using vision model.
+   * @param visionModel - The vision model to use for analyzing the image. Can be null if only storing the image.
+   * @param maxChunkSize - Maximum character length for each text chunk. Defaults to 200.
+   * @param chunkOverlap - Number of overlapping characters between consecutive chunks. Defaults to 20.
+   * @param isSeparatorRegex - Whether to treat separators as regex patterns. Defaults to false.
+   * @param separators - List of separator strings or regex patterns. Defaults to null.
+   * @param keepSeparator - If true, separators remain in the chunked text. Defaults to false.
+   * 
+   * @throws Error if the data is not a valid base64 string or if the models are not supported.
+   */
   constructor(
     data: string,
     chunks: string[] = [],
