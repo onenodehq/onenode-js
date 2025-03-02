@@ -116,10 +116,12 @@ async function main() {
   const collection = db.collection("my_collection");
 
   // Simple text query
-  const userQuery = "Alice in a fantastical world";
+  const userQuery = "What is the capital of France?";
+  const filter = {category: "geography"}; // Optional
+  const projection = {mode: "include", fields: ["title", "content"]}; // Optional
 
   // Perform semantic search
-  const response = await collection.query(userQuery);
+  const response = await collection.query(userQuery, filter, projection);
   console.log("Query matches:", response.matches);
   
   // Access the first match

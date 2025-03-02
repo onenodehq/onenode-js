@@ -446,15 +446,41 @@ export class Collection {
   }
 
   /**
-   * Query for documents using semantic search with optional embeddings, top_k, etc.
+   * Query for documents using semantic search with optional filter, projection, and other parameters.
+   * 
+   * This method searches for documents that semantically match the given query text.
+   * It returns documents containing EmbText or EmbImage fields that are semantically
+   * similar to the query, sorted by relevance score.
+   * 
+   * @param query - The text to search for
+   * @param options - Optional parameters for the query
+   * @param options.filter - Optional filter to apply to documents before semantic search (MongoDB-style query filter)
+   * @param options.projection - Optional specification of which fields to include or exclude in the response
+   * @param options.embModel - Optional embedding model to use for the query (default: "text-embedding-3-small")
+   * @param options.topK - Optional maximum number of results to return (default: 10)
+   * @param options.includeValues - Optional flag to include vector values in the response (default: false)
+   * @returns Promise resolving to an array of matching documents
+   * 
+   * @example
+   * ```typescript
+   * // Basic query
+   * const results = await collection.query("machine learning techniques");
+   * 
+   * // Advanced query with filter
+   * const results = await collection.query("machine learning techniques", {
+   *   filter: { category: "AI", published: true },
+   *   topK: 5
+   * });
+   * ```
    */
   public async query(
     query: string, // Positional argument
     options?: {
+      filter?: Record<string, unknown>;
+      projection?: Record<string, unknown>;
       embModel?: string;
       topK?: number;
       includeValues?: boolean;
-      projection?: Record<string, unknown>;
     }
   ): Promise<unknown[]> {
     const url = `${this.getCollectionUrl()}/query`;
@@ -463,6 +489,12 @@ export class Collection {
     // Build the data object dynamically
     const data: Record<string, unknown> = { query };
 
+    if (options?.filter != null) {
+      data["filter"] = this.serialize(options.filter);
+    }
+    if (options?.projection != null) {
+      data["projection"] = options.projection;
+    }
     if (options?.embModel != null) {
       data["emb_model"] = options.embModel;
     }
@@ -471,9 +503,6 @@ export class Collection {
     }
     if (options?.includeValues != null) {
       data["include_values"] = options.includeValues;
-    }
-    if (options?.projection != null) {
-      data["projection"] = options.projection;
     }
 
     const response = await fetch(url, {

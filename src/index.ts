@@ -41,6 +41,8 @@
  * // Insert a document with embedded text
  * const doc = {
  *   title: "Sample Document",
+ *   category: "AI",
+ *   published: true,
  *   content: new EmbText("This text will be automatically embedded for semantic search")
  * };
  * await collection.insert([doc]);
@@ -50,6 +52,12 @@
  * 
  * // Perform semantic search (after embeddings have been processed)
  * const results = await collection.query("semantic search");
+ * 
+ * // Perform semantic search with filter
+ * const filteredResults = await collection.query("semantic search", {
+ *   filter: { category: "AI", published: true },
+ *   topK: 5
+ * });
  * ```
  * 
  * For more information, see the documentation at https://capybaradb.co/docs
