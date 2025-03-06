@@ -29,8 +29,10 @@ import { VisionModels } from "./visionModels";
  *   image: new EmbImage(
  *     base64Image,
  *     [], // chunks - leave empty, will be populated by the database
- *     null, // embModel - can be null if only using vision model
- *     VisionModels.GPT_4O, // visionModel - for image understanding
+ *     // By default, uses EmbModels.TEXT_EMBEDDING_3_SMALL and VisionModels.GPT_4O_MINI
+ *     // You can override with custom models:
+ *     // EmbModels.TEXT_EMBEDDING_3_LARGE, // embModel - for embedding text chunks
+ *     // VisionModels.GPT_4O, // visionModel - for image understanding
  *     "image/jpeg" // mimeType - required: specify the image format
  *   )
  * };
@@ -61,13 +63,13 @@ export class EmbImage {
   
   /**
    * The embedding model to use for generating embeddings from the text chunks
-   * Can be null if only using a vision model without embedding
+   * Defaults to EmbModels.TEXT_EMBEDDING_3_SMALL
    */
   private embModel: string | null;
   
   /**
    * The vision model to use for analyzing the image and generating text descriptions
-   * Can be null if only storing the image without analysis
+   * Defaults to VisionModels.GPT_4O_MINI
    */
   private visionModel: string | null;
   
@@ -147,8 +149,8 @@ export class EmbImage {
   constructor(
     data: string,
     chunks: string[] = [],
-    embModel: string | null = null,
-    visionModel: string | null = null,
+    embModel: string | null = EmbModels.TEXT_EMBEDDING_3_SMALL,
+    visionModel: string | null = VisionModels.GPT_4O_MINI,
     mimeType: string,
     maxChunkSize: number = 200,
     chunkOverlap: number = 20,
@@ -258,8 +260,8 @@ export class EmbImage {
     }
 
     const chunks = data["chunks"] || [];
-    const embModel = data["emb_model"] || null;
-    const visionModel = data["vision_model"] || null;
+    const embModel = data["emb_model"] || EmbModels.TEXT_EMBEDDING_3_SMALL;
+    const visionModel = data["vision_model"] || VisionModels.GPT_4O_MINI;
     const maxChunkSize = data["max_chunk_size"] || 200;
     const chunkOverlap = data["chunk_overlap"] || 20;
     const isSeparatorRegex = data["is_separator_regex"] || false;
