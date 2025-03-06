@@ -31,7 +31,7 @@ import { VisionModels } from "./visionModels";
  *     [], // chunks - leave empty, will be populated by the database
  *     null, // embModel - can be null if only using vision model
  *     VisionModels.GPT_4O, // visionModel - for image understanding
- *     "image/jpeg" // mime_type - specify the image format
+ *     "image/jpeg" // mimeType - required: specify the image format
  *   )
  * };
  * 
@@ -135,6 +135,7 @@ export class EmbImage {
    * @param embModel - The embedding model to use for text chunks. Can be null if only using vision model.
    * @param visionModel - The vision model to use for analyzing the image. Can be null if only storing the image.
    * @param mimeType - The MIME type of the image (e.g., "image/jpeg", "image/png"). Must be one of the supported types.
+   *                  This parameter is required.
    * @param maxChunkSize - Maximum character length for each text chunk. Defaults to 200.
    * @param chunkOverlap - Number of overlapping characters between consecutive chunks. Defaults to 20.
    * @param isSeparatorRegex - Whether to treat separators as regex patterns. Defaults to false.
@@ -148,7 +149,7 @@ export class EmbImage {
     chunks: string[] = [],
     embModel: string | null = null,
     visionModel: string | null = null,
-    mimeType: string = "image/jpeg",
+    mimeType: string,
     maxChunkSize: number = 200,
     chunkOverlap: number = 20,
     isSeparatorRegex: boolean = false,
@@ -156,17 +157,19 @@ export class EmbImage {
     keepSeparator: boolean = false
   ) {
     if (!EmbImage.isValidData(data)) {
-      throw new Error("Invalid data: must be a non-empty base64 string.");
+      throw new Error("Invalid data: must be a non-empty string containing valid base64-encoded image data.");
     }
     if (!EmbImage.isValidMimeType(mimeType)) {
       const supportedList = EmbImage.SUPPORTED_MIME_TYPES.join(", ");
       throw new Error(`Unsupported mime type: '${mimeType}'. Supported types are: ${supportedList}`);
     }
     if (embModel !== null && !EmbImage.isValidEmbModel(embModel)) {
-      throw new Error(`Invalid embedding model: ${embModel} is not supported.`);
+      const supportedList = EmbImage.SUPPORTED_EMB_MODELS.join(", ");
+      throw new Error(`Invalid embedding model: '${embModel}' is not supported. Supported models are: ${supportedList}`);
     }
     if (visionModel !== null && !EmbImage.isValidVisionModel(visionModel)) {
-      throw new Error(`Invalid vision model: ${visionModel} is not supported.`);
+      const supportedList = EmbImage.SUPPORTED_VISION_MODELS.join(", ");
+      throw new Error(`Invalid vision model: '${visionModel}' is not supported. Supported models are: ${supportedList}`);
     }
 
     this.data = data;
@@ -245,10 +248,15 @@ export class EmbImage {
   public static fromJSON(data: Record<string, any>): EmbImage {
     const imageData = data["data"];
     if (imageData === undefined || imageData === null) {
-      throw new Error("JSON data must include 'data' under '@embImage'.");
+      throw new Error("JSON data must include 'data' field under '@embImage'. This field should contain base64-encoded image data.");
     }
 
-    const mimeType = data["mime_type"] || "image/jpeg";
+    const mimeType = data["mime_type"];
+    if (mimeType === undefined || mimeType === null) {
+      const supportedList = EmbImage.SUPPORTED_MIME_TYPES.join(", ");
+      throw new Error(`JSON data must include 'mime_type' field under '@embImage'. Supported types are: ${supportedList}`);
+    }
+
     const chunks = data["chunks"] || [];
     const embModel = data["emb_model"] || null;
     const visionModel = data["vision_model"] || null;
