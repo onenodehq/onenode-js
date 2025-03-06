@@ -60,6 +60,95 @@
  * });
  * ```
  * 
+ * EmbText Usage:
+ * --------------
+ * EmbText is a specialized data type for storing and embedding text in CapybaraDB. It enables 
+ * semantic search capabilities by automatically chunking, embedding, and indexing text.
+ * 
+ * Basic Usage:
+ * ```typescript
+ * import { EmbText } from "capybaradb";
+ * 
+ * // Storing a single text field that you want to embed
+ * const document = {
+ *   field_name: new EmbText("This text will be automatically embedded for semantic search")
+ * };
+ * ```
+ * 
+ * Customized Usage:
+ * ```typescript
+ * import { EmbText, EmbModels } from "capybaradb";
+ * 
+ * const document = {
+ *   field_name: new EmbText({
+ *     text: "This text will be automatically embedded for semantic search",
+ *     chunks: [], // leave empty, will be populated by the database
+ *     embModel: EmbModels.TEXT_EMBEDDING_3_LARGE, // Change the default model
+ *     maxChunkSize: 200, // Configure chunk sizes
+ *     chunkOverlap: 20, // Overlap between chunks
+ *     isSeparatorRegex: false, // Are separators plain strings or regex?
+ *     separators: ["\n\n", "\n"], // Separators for chunking
+ *     keepSeparator: false // Keep or remove separators
+ *   })
+ * };
+ * ```
+ * 
+ * EmbImage Usage:
+ * ---------------
+ * EmbImage is a specialized data type for storing and processing images in CapybaraDB. It enables 
+ * multimodal capabilities by storing images that can be processed by vision models and embedded 
+ * for semantic search.
+ * 
+ * Basic Usage:
+ * ```typescript
+ * import { EmbImage } from "capybaradb";
+ * import fs from "fs";
+ * 
+ * // Read an image file and convert to base64
+ * const imageBuffer = fs.readFileSync("path/to/image.jpg");
+ * const base64Image = imageBuffer.toString("base64");
+ * 
+ * // Storing a single image field
+ * const document = {
+ *   title: "Product Image",
+ *   image: new EmbImage(base64Image)
+ * };
+ * ```
+ * 
+ * Customized Usage:
+ * ```typescript
+ * import { EmbImage, EmbModels, VisionModels } from "capybaradb";
+ * import fs from "fs";
+ * 
+ * // Read an image file and convert to base64
+ * const imageBuffer = fs.readFileSync("path/to/image.jpg");
+ * const base64Image = imageBuffer.toString("base64");
+ * 
+ * const document = {
+ *   title: "Product Image",
+ *   image: new EmbImage({
+ *     data: base64Image, // Base64-encoded image
+ *     chunks: [], // Leave empty, populated by server
+ *     embModel: EmbModels.TEXT_EMBEDDING_3_SMALL, // For embedding descriptions
+ *     visionModel: VisionModels.GPT_4O, // Vision model for analysis
+ *     maxChunkSize: 200, // Configure chunk sizes
+ *     chunkOverlap: 20, // Overlap between chunks
+ *     isSeparatorRegex: false, // Are separators plain strings or regex?
+ *     separators: ["\n\n", "\n"], // Separators for chunking
+ *     keepSeparator: false // Keep or remove separators
+ *   })
+ * };
+ * ```
+ * 
+ * How It Works:
+ * When you insert a document with EmbText or EmbImage fields:
+ * 1. The data is stored immediately in the database
+ * 2. Asynchronously, the text/image is processed:
+ *    - For EmbText: The text is chunked and embedded
+ *    - For EmbImage: The image is analyzed by the vision model (if specified) and embedded
+ * 3. The resulting embeddings are indexed for semantic search
+ * 4. The chunks are stored in the document for future reference
+ * 
  * For more information, see the documentation at https://capybaradb.co/docs
  */
 
