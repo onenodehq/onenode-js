@@ -30,7 +30,8 @@ import { VisionModels } from "./visionModels";
  *     base64Image,
  *     [], // chunks - leave empty, will be populated by the database
  *     null, // embModel - can be null if only using vision model
- *     VisionModels.GPT_4O // visionModel - for image understanding
+ *     VisionModels.GPT_4O, // visionModel - for image understanding
+ *     "image/jpeg" // mime_type - specify the image format
  *   )
  * };
  * 
@@ -46,6 +47,11 @@ export class EmbImage {
    * The base64-encoded image data
    */
   private data: string;
+  
+  /**
+   * The MIME type of the image (e.g., "image/jpeg", "image/png")
+   */
+  private mimeType: string;
   
   /**
    * The text chunks generated from the image by the vision model
@@ -108,6 +114,17 @@ export class EmbImage {
     VisionModels.GPT_4O_TURBO,
     VisionModels.GPT_O1,
   ];
+  
+  /**
+   * List of supported MIME types for images
+   */
+  private static SUPPORTED_MIME_TYPES: string[] = [
+    "image/jpeg",
+    "image/jpg",
+    "image/png",
+    "image/gif",
+    "image/webp",
+  ];
 
   /**
    * Creates a new EmbImage instance for image storage and processing.
@@ -117,19 +134,21 @@ export class EmbImage {
    *                 and should be left empty when creating a new EmbImage instance.
    * @param embModel - The embedding model to use for text chunks. Can be null if only using vision model.
    * @param visionModel - The vision model to use for analyzing the image. Can be null if only storing the image.
+   * @param mimeType - The MIME type of the image (e.g., "image/jpeg", "image/png"). Must be one of the supported types.
    * @param maxChunkSize - Maximum character length for each text chunk. Defaults to 200.
    * @param chunkOverlap - Number of overlapping characters between consecutive chunks. Defaults to 20.
    * @param isSeparatorRegex - Whether to treat separators as regex patterns. Defaults to false.
    * @param separators - List of separator strings or regex patterns. Defaults to null.
    * @param keepSeparator - If true, separators remain in the chunked text. Defaults to false.
    * 
-   * @throws Error if the data is not a valid base64 string or if the models are not supported.
+   * @throws Error if the data is not a valid base64 string, if the mime type is not supported, or if the models are not supported.
    */
   constructor(
     data: string,
     chunks: string[] = [],
     embModel: string | null = null,
     visionModel: string | null = null,
+    mimeType: string = "image/jpeg",
     maxChunkSize: number = 200,
     chunkOverlap: number = 20,
     isSeparatorRegex: boolean = false,
@@ -139,6 +158,10 @@ export class EmbImage {
     if (!EmbImage.isValidData(data)) {
       throw new Error("Invalid data: must be a non-empty base64 string.");
     }
+    if (!EmbImage.isValidMimeType(mimeType)) {
+      const supportedList = EmbImage.SUPPORTED_MIME_TYPES.join(", ");
+      throw new Error(`Unsupported mime type: '${mimeType}'. Supported types are: ${supportedList}`);
+    }
     if (embModel !== null && !EmbImage.isValidEmbModel(embModel)) {
       throw new Error(`Invalid embedding model: ${embModel} is not supported.`);
     }
@@ -147,6 +170,7 @@ export class EmbImage {
     }
 
     this.data = data;
+    this.mimeType = mimeType;
     this.chunks = chunks;
     this.embModel = embModel;
     this.visionModel = visionModel;
@@ -172,6 +196,13 @@ export class EmbImage {
       return false;
     }
   }
+  
+  /**
+   * Validate that 'mimeType' is in the supported list
+   */
+  private static isValidMimeType(mimeType: string): boolean {
+    return EmbImage.SUPPORTED_MIME_TYPES.includes(mimeType);
+  }
 
   /**
    * Validate that 'embModel' is in the supported list
@@ -194,6 +225,7 @@ export class EmbImage {
     return {
       "@embImage": {
         data: this.data,
+        mime_type: this.mimeType,
         chunks: this.chunks,
         emb_model: this.embModel,
         vision_model: this.visionModel,
@@ -216,6 +248,7 @@ export class EmbImage {
       throw new Error("JSON data must include 'data' under '@embImage'.");
     }
 
+    const mimeType = data["mime_type"] || "image/jpeg";
     const chunks = data["chunks"] || [];
     const embModel = data["emb_model"] || null;
     const visionModel = data["vision_model"] || null;
@@ -230,6 +263,7 @@ export class EmbImage {
       chunks,
       embModel,
       visionModel,
+      mimeType,
       maxChunkSize,
       chunkOverlap,
       isSeparatorRegex,
