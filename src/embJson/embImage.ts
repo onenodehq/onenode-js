@@ -227,19 +227,42 @@ export class EmbImage {
    * Return a JSON representation of this object
    */
   public toJSON(): Record<string, any> {
+    // Start with required fields
+    const result: Record<string, any> = {
+      data: this.data,
+      mime_type: this.mimeType,
+    };
+    
+    // Only include chunks if they exist
+    if (this.chunks && this.chunks.length > 0) {
+      result.chunks = this.chunks;
+    }
+    
+    // Add other fields only if they are not null
+    if (this.embModel !== null) {
+      result.emb_model = this.embModel;
+    }
+    if (this.visionModel !== null) {
+      result.vision_model = this.visionModel;
+    }
+    if (this.maxChunkSize !== null) {
+      result.max_chunk_size = this.maxChunkSize;
+    }
+    if (this.chunkOverlap !== null) {
+      result.chunk_overlap = this.chunkOverlap;
+    }
+    if (this.isSeparatorRegex !== null) {
+      result.is_separator_regex = this.isSeparatorRegex;
+    }
+    if (this.separators !== null) {
+      result.separators = this.separators;
+    }
+    if (this.keepSeparator !== null) {
+      result.keep_separator = this.keepSeparator;
+    }
+    
     return {
-      "@embImage": {
-        data: this.data,
-        mime_type: this.mimeType,
-        chunks: this.chunks,
-        emb_model: this.embModel,
-        vision_model: this.visionModel,
-        max_chunk_size: this.maxChunkSize,
-        chunk_overlap: this.chunkOverlap,
-        is_separator_regex: this.isSeparatorRegex,
-        separators: this.separators,
-        keep_separator: this.keepSeparator,
-      },
+      "@embImage": result
     };
   }
 
