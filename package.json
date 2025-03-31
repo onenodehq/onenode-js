@@ -1,7 +1,7 @@
 {
-  "name": "capybaradb",
-  "version": "0.2.8",
-  "description": "The official JavaScript / TypeScript library for CapybaraDB",
+  "name": "capydb",
+  "version": "0.3.0",
+  "description": "The official JavaScript / TypeScript library for CapyDB",
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",
   "types": "./dist/esm/index.d.ts",
@@ -22,7 +22,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/capybaradb/capybaradb-js.git"
+    "url": "git+https://github.com/capydb/capydb-js.git"
   },
   "files": [
     "dist/**/*",
@@ -32,12 +32,12 @@
   "keywords": [
     "EmbJSON"
   ],
-  "author": "CapybaraDB",
+  "author": "CapyDB",
   "license": "Apache-2.0",
   "bugs": {
-    "url": "https://github.com/capybaradb/capybaradb-js/issues"
+    "url": "https://github.com/capydb/capydb-js/issues"
   },
-  "homepage": "https://docs.capybaradb.co",
+  "homepage": "https://docs.capydb.com",
   "access": "public",
   "devDependencies": {
     "@types/node": "^22.10.1",

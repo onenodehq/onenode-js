@@ -2,11 +2,11 @@ import { EmbText } from "../embJson/embText";
 
 export function serializeDocument(document: any): any {
   if (Array.isArray(document)) {
-    return document.map(serializeDocument); // Recursively process arrays
+    return document.map(serializeDocument);
   }
 
   if (document instanceof EmbText) {
-    return document.toJSON(); // Convert EmbText to JSON
+    return document.toJSON();
   }
 
   if (typeof document === "object" && document !== null) {
@@ -18,5 +18,5 @@ export function serializeDocument(document: any): any {
     );
   }
 
-  return document; // Primitive values are returned as-is
+  return document;
 }
