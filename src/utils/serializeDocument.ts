@@ -1,4 +1,5 @@
 import { EmbText } from "../embJson/embText";
+import { EmbImage } from "../embJson/embImage";
 
 export function serializeDocument(document: any): any {
   if (Array.isArray(document)) {
@@ -6,6 +7,10 @@ export function serializeDocument(document: any): any {
   }
 
   if (document instanceof EmbText) {
+    return document.toJSON();
+  }
+  
+  if (document instanceof EmbImage) {
     return document.toJSON();
   }
 

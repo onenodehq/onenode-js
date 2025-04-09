@@ -66,6 +66,11 @@ export class EmbText {
   }
 
   public static fromJSON(data: Record<string, any>): EmbText {
+    // Check if the data is wrapped with '@embText'
+    if ("@embText" in data) {
+      data = data["@embText"];
+    }
+    
     const text = data["text"];
     if (text === undefined || text === null) {
       throw new Error("JSON data must include 'text' under '@embText'.");

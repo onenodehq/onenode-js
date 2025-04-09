@@ -8,6 +8,7 @@ import {
   Timestamp,
 } from "bson";
 import { EmbText } from "../embJson/embText";
+import { EmbImage } from "../embJson/embImage";
 
 type SerializerFunction = (v: any) => Record<string, any>;
 
@@ -153,7 +154,11 @@ export class Collection {
     const obj = value as Record<string, any>;
 
     if ("@embText" in obj) {
-      return EmbText.fromJSON(obj["@embText"]);
+      return EmbText.fromJSON(obj);
+    }
+    
+    if ("@embImage" in obj) {
+      return EmbImage.fromJSON(obj);
     }
 
     if ("$oid" in obj) return new ObjectId(obj["$oid"]);

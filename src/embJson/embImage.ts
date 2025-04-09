@@ -4,7 +4,7 @@ import { VisionModels } from "./visionModels";
 export class EmbImage {
   private data: string;
   private mimeType: string;
-  private chunks: string[];
+  private _chunks: string[];
   private embModel: string | null;
   private visionModel: string | null;
   private maxChunkSize: number;
@@ -40,8 +40,8 @@ export class EmbImage {
     embModel: string | null = EmbModels.TEXT_EMBEDDING_3_SMALL,
     visionModel: string | null = VisionModels.GPT_4O_MINI,
     mimeType: string,
-    maxChunkSize: number = 200,
-    chunkOverlap: number = 20,
+    maxChunkSize: number | null = null,
+    chunkOverlap: number | null = null,
     isSeparatorRegex: boolean = false,
     separators: string[] | null = null,
     keepSeparator: boolean = false
@@ -64,11 +64,11 @@ export class EmbImage {
 
     this.data = data;
     this.mimeType = mimeType;
-    this.chunks = chunks;
+    this._chunks = chunks;
     this.embModel = embModel;
     this.visionModel = visionModel;
-    this.maxChunkSize = maxChunkSize;
-    this.chunkOverlap = chunkOverlap;
+    this.maxChunkSize = maxChunkSize !== null ? maxChunkSize : 0;
+    this.chunkOverlap = chunkOverlap !== null ? chunkOverlap : 0;
     this.isSeparatorRegex = isSeparatorRegex;
     this.separators = separators;
     this.keepSeparator = keepSeparator;
@@ -99,6 +99,10 @@ export class EmbImage {
     return EmbImage.SUPPORTED_VISION_MODELS.includes(visionModel);
   }
 
+  public get chunks(): string[] {
+    return this._chunks;
+  }
+
   public toJSON(): Record<string, any> {
     const result: Record<string, any> = {
       data: this.data,
@@ -106,8 +110,8 @@ export class EmbImage {
     };
     
     // Only include chunks if they exist
-    if (this.chunks && this.chunks.length > 0) {
-      result.chunks = this.chunks;
+    if (this._chunks && this._chunks.length > 0) {
+      result.chunks = this._chunks;
     }
     
     // Add other fields only if they are not null
@@ -139,6 +143,11 @@ export class EmbImage {
   }
 
   public static fromJSON(data: Record<string, any>): EmbImage {
+    // Check if the data is wrapped with '@embImage'
+    if ("@embImage" in data) {
+      data = data["@embImage"];
+    }
+    
     const imageData = data["data"];
     if (imageData === undefined || imageData === null) {
       throw new Error("JSON data must include 'data' field under '@embImage'. This field should contain base64-encoded image data.");
@@ -153,8 +162,8 @@ export class EmbImage {
     const chunks = data["chunks"] || [];
     const embModel = data["emb_model"] || EmbModels.TEXT_EMBEDDING_3_SMALL;
     const visionModel = data["vision_model"] || VisionModels.GPT_4O_MINI;
-    const maxChunkSize = data["max_chunk_size"] || 200;
-    const chunkOverlap = data["chunk_overlap"] || 20;
+    const maxChunkSize = data["max_chunk_size"] || null;
+    const chunkOverlap = data["chunk_overlap"] || null;
     const isSeparatorRegex = data["is_separator_regex"] || false;
     const separators = data["separators"] || null;
     const keepSeparator = data["keep_separator"] || false;
@@ -173,10 +182,9 @@ export class EmbImage {
     );
   }
 
-
   public toString(): string {
-    if (this.chunks.length > 0) {
-      return `EmbImage("${this.chunks[0]}")`;
+    if (this._chunks.length > 0) {
+      return `EmbImage("${this._chunks[0]}")`;
     }
     return "EmbImage(<raw data>)";
   }
