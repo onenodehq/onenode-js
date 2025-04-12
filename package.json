@@ -1,6 +1,6 @@
 {
   "name": "capydb",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "The official JavaScript / TypeScript library for CapyDB",
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",
@@ -32,8 +32,8 @@
   "keywords": [
     "EmbJSON"
   ],
-  "author": "CapyDB",
-  "license": "Apache-2.0",
+  "author": "Tomoh Kanazawa <tomo@capydb.com>",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/capydb/capydb-js/issues"
   },

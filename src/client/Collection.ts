@@ -208,7 +208,7 @@ export class Collection {
     }
   }
 
-  public async insert(documents: unknown[]): Promise<unknown> {
+  public async insertMany(documents: unknown[]): Promise<unknown> {
     const url = this.getCollectionUrl();
     const headers = this.getHeaders();
     const serializedDocs = documents.map((doc) => this.serialize(doc));
@@ -217,6 +217,20 @@ export class Collection {
       method: "POST",
       headers,
       body: JSON.stringify({ documents: serializedDocs }),
+    });
+
+    return this.handleResponse(response);
+  }
+
+  public async insertOne(document: unknown): Promise<unknown> {
+    const url = this.getCollectionUrl();
+    const headers = this.getHeaders();
+    const serializedDoc = this.serialize(document);
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ documents: [serializedDoc] }),
     });
 
     return this.handleResponse(response);
