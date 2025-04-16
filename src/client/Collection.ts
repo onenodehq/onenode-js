@@ -258,13 +258,13 @@ export class Collection {
     return this.handleResponse(response);
   }
 
-  public async find(
+  public async find<TDocument = Record<string, any>>(
     filter: unknown,
     projection?: unknown,
     sort?: unknown,
     limit?: number,
     skip?: number
-  ): Promise<unknown[]> {
+  ): Promise<TDocument[]> {
     const url = `${this.getCollectionUrl()}/find`;
     const headers = this.getHeaders();
 
@@ -280,10 +280,11 @@ export class Collection {
       }),
     });
 
-    return this.handleResponse(response) as Promise<unknown[]>;
+    const responseData = await this.handleResponse(response) as Record<string, unknown>;
+    return (responseData.docs || []) as TDocument[];
   }
 
-  public async query(
+  public async query<TQueryResult = Record<string, any>>(
     query: string,
     options?: {
       filter?: Record<string, unknown>;
@@ -292,7 +293,7 @@ export class Collection {
       topK?: number;
       includeValues?: boolean;
     }
-  ): Promise<unknown[]> {
+  ): Promise<TQueryResult[]> {
     const url = `${this.getCollectionUrl()}/query`;
     const headers = this.getHeaders();
 
@@ -320,6 +321,7 @@ export class Collection {
       body: JSON.stringify(data),
     });
 
-    return this.handleResponse(response) as Promise<unknown[]>;
+    const responseData = await this.handleResponse(response) as Record<string, unknown>;
+    return (responseData.matches || []) as TQueryResult[];
   }
 }
