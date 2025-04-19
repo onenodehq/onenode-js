@@ -324,4 +324,21 @@ export class Collection {
     const responseData = await this.handleResponse(response) as Record<string, unknown>;
     return (responseData.matches || []) as TQueryResult[];
   }
+
+  public async drop(): Promise<void> {
+    const url = `https://api.capydb.co/v0/db/${this.projectId}_${this.dbName}/collection/${this.collectionName}`;
+    const headers = this.getHeaders();
+    
+    const response = await fetch(url, {
+      method: "DELETE",
+      headers
+    });
+    
+    // 204 responses have no content, so we should just check status without parsing JSON
+    if (response.status === 204) {
+      return;
+    }
+    
+    await this.handleResponse(response);
+  }
 }
