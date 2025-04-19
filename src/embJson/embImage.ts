@@ -22,8 +22,8 @@ export class EmbImage {
   private static SUPPORTED_VISION_MODELS: string[] = [
     VisionModels.GPT_4O_MINI,
     VisionModels.GPT_4O,
-    VisionModels.GPT_4O_TURBO,
-    VisionModels.GPT_O1,
+    VisionModels.GPT_4_TURBO,
+    VisionModels.O1,
   ];
   
   private static SUPPORTED_MIME_TYPES: string[] = [
