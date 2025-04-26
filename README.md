@@ -469,3 +469,84 @@ EmbModels.TEXT_EMBEDDING_ADA_002  // "text-embedding-ada-002"
 - **Website:** [capydb.com](https://capydb.com)
 
 Happy hacking with CapyDB!
+
+## Accessing Image URLs
+
+When you retrieve a document with an EmbImage from the database, the server processes the image and assigns a public URL to it. You can access this URL through the `url` property:
+
+```javascript
+// Using async/await
+async function displayImageFromDocument() {
+  // Initialize client
+  const client = new CapyDBClient("your-api-key");
+  const db = client.database("your-project-id", "your-db-name");
+  const collection = db.collection("your-collection-name");
+  
+  // Retrieve a document containing an EmbImage
+  const document = await collection.findOne({ _id: "document_id_with_image" });
+  
+  // Access the image URL
+  if (document.image instanceof EmbImage && document.image.url) {
+    console.log(`Image URL: ${document.image.url}`);
+    
+    // Example: Display the image using the URL
+    const imgElement = document.createElement("img");
+    imgElement.src = document.image.url;
+    document.body.appendChild(imgElement);
+  } else {
+    console.log("Image hasn't been processed yet or URL is not available");
+  }
+}
+
+// Using promises
+function getImageUrl() {
+  const client = new CapyDBClient("your-api-key");
+  const db = client.database("your-project-id", "your-db-name");
+  const collection = db.collection("your-collection-name");
+  
+  collection.findOne({ _id: "document_id_with_image" })
+    .then(document => {
+      if (document.image instanceof EmbImage && document.image.url) {
+        console.log(`Image URL: ${document.image.url}`);
+        return document.image.url;
+      } else {
+        console.log("Image hasn't been processed yet or URL is not available");
+        return null;
+      }
+    })
+    .catch(error => {
+      console.error("Error retrieving document:", error);
+    });
+}
+```
+
+### Working with Multiple Images
+
+```javascript
+// For documents with an array of images
+async function getMultipleImageUrls() {
+  const document = await collection.findOne({ _id: "document_with_image_array" });
+  
+  // Access URLs from an array of images
+  if (Array.isArray(document.images)) {
+    document.images.forEach((img, index) => {
+      if (img instanceof EmbImage && img.url) {
+        console.log(`Image ${index} URL: ${img.url}`);
+      }
+    });
+  }
+}
+
+// For nested documents with images
+async function getNestedImageUrl() {
+  const document = await collection.findOne({ _id: "document_with_nested_image" });
+  
+  // Access URL from a nested structure
+  if (document.product && document.product.thumbnail instanceof EmbImage) {
+    const thumbnailUrl = document.product.thumbnail.url;
+    if (thumbnailUrl) {
+      console.log(`Product thumbnail URL: ${thumbnailUrl}`);
+    }
+  }
+}
+```

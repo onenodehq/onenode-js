@@ -5,6 +5,7 @@ export class EmbImage {
   private data: string;
   private mimeType: string;
   private _chunks: string[];
+  private _url: string | null;
   private embModel: string | null;
   private visionModel: string | null;
   private maxChunkSize: number;
@@ -44,7 +45,8 @@ export class EmbImage {
     chunkOverlap: number | null = null,
     isSeparatorRegex: boolean = false,
     separators: string[] | null = null,
-    keepSeparator: boolean = false
+    keepSeparator: boolean = false,
+    url: string | null = null
   ) {
     if (!EmbImage.isValidData(data)) {
       throw new Error("Invalid data: must be a non-empty string containing valid base64-encoded image data.");
@@ -65,6 +67,7 @@ export class EmbImage {
     this.data = data;
     this.mimeType = mimeType;
     this._chunks = chunks;
+    this._url = url;
     this.embModel = embModel;
     this.visionModel = visionModel;
     this.maxChunkSize = maxChunkSize !== null ? maxChunkSize : 0;
@@ -103,6 +106,10 @@ export class EmbImage {
     return this._chunks;
   }
 
+  public get url(): string | null {
+    return this._url;
+  }
+
   public toJSON(): Record<string, any> {
     const result: Record<string, any> = {
       data: this.data,
@@ -112,6 +119,11 @@ export class EmbImage {
     // Only include chunks if they exist
     if (this._chunks && this._chunks.length > 0) {
       result.chunks = this._chunks;
+    }
+    
+    // Include URL if it exists
+    if (this._url) {
+      result.url = this._url;
     }
     
     // Add other fields only if they are not null
@@ -160,6 +172,7 @@ export class EmbImage {
     }
 
     const chunks = data["chunks"] || [];
+    const url = data["url"] || null;
     const embModel = data["emb_model"] || EmbModels.TEXT_EMBEDDING_3_SMALL;
     const visionModel = data["vision_model"] || VisionModels.GPT_4O_MINI;
     const maxChunkSize = data["max_chunk_size"] || null;
@@ -178,11 +191,15 @@ export class EmbImage {
       chunkOverlap,
       isSeparatorRegex,
       separators,
-      keepSeparator
+      keepSeparator,
+      url
     );
   }
 
   public toString(): string {
+    if (this._url) {
+      return `EmbImage(${this._url})`;
+    }
     if (this._chunks.length > 0) {
       return `EmbImage("${this._chunks[0]}")`;
     }
