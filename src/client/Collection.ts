@@ -86,7 +86,6 @@ export class Collection {
   private getHeaders(): HeadersInit {
     return {
       Authorization: `Bearer ${this.apiKey}`,
-      "Content-Type": "application/json",
     };
   }
 
@@ -213,10 +212,13 @@ export class Collection {
     const headers = this.getHeaders();
     const serializedDocs = documents.map((doc) => this.serialize(doc));
 
+    const formData = new FormData();
+    formData.append('documents', JSON.stringify(serializedDocs));
+
     const response = await fetch(url, {
       method: "POST",
       headers,
-      body: JSON.stringify({ documents: serializedDocs }),
+      body: formData,
     });
 
     return this.handleResponse(response);
@@ -229,15 +231,16 @@ export class Collection {
   ): Promise<unknown> {
     const url = this.getCollectionUrl();
     const headers = this.getHeaders();
+    
+    const formData = new FormData();
+    formData.append('filter', JSON.stringify(this.serialize(filter)));
+    formData.append('update', JSON.stringify(this.serialize(update)));
+    formData.append('upsert', String(upsert));
 
     const response = await fetch(url, {
       method: "PUT",
       headers,
-      body: JSON.stringify({
-        filter: this.serialize(filter),
-        update: this.serialize(update),
-        upsert,
-      }),
+      body: formData,
     });
 
     return this.handleResponse(response);
@@ -246,13 +249,14 @@ export class Collection {
   public async delete(filter: unknown): Promise<unknown> {
     const url = this.getCollectionUrl();
     const headers = this.getHeaders();
+    
+    const formData = new FormData();
+    formData.append('filter', JSON.stringify(this.serialize(filter)));
 
     const response = await fetch(url, {
       method: "DELETE",
       headers,
-      body: JSON.stringify({
-        filter: this.serialize(filter),
-      }),
+      body: formData,
     });
 
     return this.handleResponse(response);
@@ -267,17 +271,30 @@ export class Collection {
   ): Promise<TDocument[]> {
     const url = `${this.getCollectionUrl()}/find`;
     const headers = this.getHeaders();
+    
+    const formData = new FormData();
+    formData.append('filter', JSON.stringify(this.serialize(filter)));
+    
+    if (projection !== undefined) {
+      formData.append('projection', JSON.stringify(projection));
+    }
+    
+    if (sort !== undefined) {
+      formData.append('sort', JSON.stringify(sort));
+    }
+    
+    if (limit !== undefined) {
+      formData.append('limit', String(limit));
+    }
+    
+    if (skip !== undefined) {
+      formData.append('skip', String(skip));
+    }
 
     const response = await fetch(url, {
       method: "POST",
       headers,
-      body: JSON.stringify({
-        filter: this.serialize(filter),
-        projection,
-        sort,
-        limit,
-        skip,
-      }),
+      body: formData,
     });
 
     const responseData = await this.handleResponse(response) as Record<string, unknown>;
@@ -297,28 +314,29 @@ export class Collection {
     const url = `${this.getCollectionUrl()}/query`;
     const headers = this.getHeaders();
 
-    const data: Record<string, unknown> = { query };
+    const formData = new FormData();
+    formData.append('query', query);
 
     if (options?.filter != null) {
-      data["filter"] = this.serialize(options.filter);
+      formData.append('filter', JSON.stringify(this.serialize(options.filter)));
     }
     if (options?.projection != null) {
-      data["projection"] = options.projection;
+      formData.append('projection', JSON.stringify(options.projection));
     }
     if (options?.embModel != null) {
-      data["emb_model"] = options.embModel;
+      formData.append('emb_model', options.embModel);
     }
     if (options?.topK != null) {
-      data["top_k"] = options.topK;
+      formData.append('top_k', String(options.topK));
     }
     if (options?.includeValues != null) {
-      data["include_values"] = options.includeValues;
+      formData.append('include_values', String(options.includeValues));
     }
 
     const response = await fetch(url, {
       method: "POST",
       headers,
-      body: JSON.stringify(data),
+      body: formData,
     });
 
     const responseData = await this.handleResponse(response) as Record<string, unknown>;
@@ -329,9 +347,12 @@ export class Collection {
     const url = `https://api.capydb.co/v0/db/${this.projectId}_${this.dbName}/collection/${this.collectionName}`;
     const headers = this.getHeaders();
     
+    const formData = new FormData();
+    
     const response = await fetch(url, {
       method: "DELETE",
-      headers
+      headers,
+      body: formData
     });
     
     // 204 responses have no content, so we should just check status without parsing JSON
