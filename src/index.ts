@@ -1,4 +1,4 @@
-export { CapyDB } from "./client/CapyDB";
+export { OneNode } from "./client/OneNode";
 export { Database } from "./client/Database";
 export { Collection } from "./client/Collection";
 export { EmbText } from "./embJson/embText";

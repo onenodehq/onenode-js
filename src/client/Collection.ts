@@ -80,7 +80,7 @@ export class Collection {
   }
 
   private getCollectionUrl(): string {
-    return `https://api.capydb.co/v0/db/${this.projectId}_${this.dbName}/collection/${this.collectionName}/document`;
+    return `https://api.onenode.ai/v0/db/${this.projectId}_${this.dbName}/collection/${this.collectionName}/document`;
   }
 
   private getHeaders(): HeadersInit {
@@ -344,7 +344,7 @@ export class Collection {
   }
 
   public async drop(): Promise<void> {
-    const url = `https://api.capydb.co/v0/db/${this.projectId}_${this.dbName}/collection/${this.collectionName}`;
+    const url = `https://api.onenode.ai/v0/db/${this.projectId}_${this.dbName}/collection/${this.collectionName}`;
     const headers = this.getHeaders();
     
     const formData = new FormData();
