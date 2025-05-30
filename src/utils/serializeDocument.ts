@@ -1,16 +1,16 @@
-import { EmbText } from "../embJson/embText";
-import { EmbImage } from "../embJson/embImage";
+import { Text } from "../ejson/text";
+import { Image } from "../ejson/image";
 
 export function serializeDocument(document: any): any {
   if (Array.isArray(document)) {
     return document.map(serializeDocument);
   }
 
-  if (document instanceof EmbText) {
+  if (document instanceof Text) {
     return document.toJSON();
   }
   
-  if (document instanceof EmbImage) {
+  if (document instanceof Image) {
     return document.toJSON();
   }
 

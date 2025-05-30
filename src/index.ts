@@ -1,10 +1,10 @@
 export { OneNode } from "./client/OneNode";
 export { Database } from "./client/Database";
 export { Collection } from "./client/Collection";
-export { EmbText } from "./embJson/embText";
-export { EmbImage } from "./embJson/embImage";
-export { EmbModels } from "./embJson/embModels";
-export { VisionModels } from "./embJson/visionModels";
+export { Text } from "./ejson/text";
+export { Image } from "./ejson/image";
+export { EmbModels } from "./ejson/embModels";
+export { VisionModels } from "./ejson/visionModels";
 
 export {
   ObjectId,

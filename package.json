@@ -1,6 +1,6 @@
 {
   "name": "@onenodehq/onenode",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "description": "The official JavaScript / TypeScript library for OneNode",
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",

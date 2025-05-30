@@ -7,13 +7,13 @@ import {
   ObjectId,
   Timestamp,
 } from "bson";
-import { EmbText } from "../embJson/embText";
-import { EmbImage } from "../embJson/embImage";
+import { Text } from "../ejson/text";
+import { Image } from "../ejson/image";
 
 type SerializerFunction = (v: any) => Record<string, any>;
 
 const BSON_SERIALIZERS: Record<string, SerializerFunction> = {
-  EmbText: (v: EmbText) => ({ "@embText": v.toJSON() }),
+  Text: (v: Text) => ({ "xText": v.toJSON() }),
   ObjectId: (v: ObjectId) => ({ $oid: v.toString() }),
   Date: (v: Date) => ({ $date: v.toISOString() }),
   Decimal128: (v: Decimal128) => ({ $numberDecimal: v.toString() }),
@@ -108,7 +108,7 @@ export class Collection {
       return value.map((item) => this.serialize(item, depth + 1));
     }
 
-    if (value instanceof EmbText) {
+    if (value instanceof Text) {
       return value.toJSON();
     }
 
@@ -152,12 +152,12 @@ export class Collection {
 
     const obj = value as Record<string, any>;
 
-    if ("@embText" in obj) {
-      return EmbText.fromJSON(obj);
+    if ("xText" in obj) {
+      return Text.fromJSON(obj);
     }
     
-    if ("@embImage" in obj) {
-      return EmbImage.fromJSON(obj);
+    if ("xImage" in obj) {
+      return Image.fromJSON(obj);
     }
 
     if ("$oid" in obj) return new ObjectId(obj["$oid"]);

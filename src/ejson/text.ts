@@ -1,5 +1,5 @@
 import { EmbModels } from "./embModels";
-export class EmbText {
+export class Text {
   private text: string;
   private chunks: string[];
   private embModel: string;
@@ -25,10 +25,10 @@ export class EmbText {
     separators: string[] | null = null,
     keepSeparator: boolean = false
   ) {
-    if (!EmbText.isValidText(text)) {
+    if (!Text.isValidText(text)) {
       throw new Error("Invalid text: must be a non-empty string.");
     }
-    if (!EmbText.isValidEmbModel(embModel)) {
+    if (!Text.isValidEmbModel(embModel)) {
       throw new Error(`Invalid embedding model: ${embModel} is not supported.`);
     }
 
@@ -47,12 +47,12 @@ export class EmbText {
   }
 
   private static isValidEmbModel(embModel: string): boolean {
-    return EmbText.SUPPORTED_EMB_MODELS.includes(embModel);
+    return Text.SUPPORTED_EMB_MODELS.includes(embModel);
   }
 
   public toJSON(): Record<string, any> {
     return {
-      "@embText": {
+      "xText": {
         text: this.text,
         chunks: this.chunks,
         emb_model: this.embModel,
@@ -65,15 +65,15 @@ export class EmbText {
     };
   }
 
-  public static fromJSON(data: Record<string, any>): EmbText {
-    // Check if the data is wrapped with '@embText'
-    if ("@embText" in data) {
-      data = data["@embText"];
+  public static fromJSON(data: Record<string, any>): Text {
+    // Check if the data is wrapped with 'xText'
+    if ("xText" in data) {
+      data = data["xText"];
     }
     
     const text = data["text"];
     if (text === undefined || text === null) {
-      throw new Error("JSON data must include 'text' under '@embText'.");
+      throw new Error("JSON data must include 'text' under 'xText'.");
     }
 
     const chunks = data["chunks"] || [];
@@ -84,7 +84,7 @@ export class EmbText {
     const separators = data["separators"] || null;
     const keepSeparator = data["keep_separator"] || false;
 
-    return new EmbText(
+    return new Text(
       text,
       chunks,
       embModel,
@@ -97,6 +97,6 @@ export class EmbText {
   }
 
   public toString(): string {
-    return `EmbText(\"${this.text}\")`;
+    return `Text(\"${this.text}\")`;
   }
 }
