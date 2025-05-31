@@ -1,6 +1,16 @@
 import { EmbModels } from "./embModels";
 import { VisionModels } from "./visionModels";
 
+export interface ImageIndexOptions {
+  embModel?: string;
+  visionModel?: string;
+  maxChunkSize?: number;
+  chunkOverlap?: number;
+  isSeparatorRegex?: boolean;
+  separators?: string[] | null;
+  keepSeparator?: boolean;
+}
+
 export class Image {
   private data: string;
   private mimeType: string;
@@ -8,11 +18,12 @@ export class Image {
   private _url: string | null;
   private embModel: string | null;
   private visionModel: string | null;
-  private maxChunkSize: number;
-  private chunkOverlap: number;
-  private isSeparatorRegex: boolean;
+  private maxChunkSize: number | null;
+  private chunkOverlap: number | null;
+  private isSeparatorRegex: boolean | null;
   private separators: string[] | null;
-  private keepSeparator: boolean;
+  private keepSeparator: boolean | null;
+  private indexEnabled: boolean;
 
   private static SUPPORTED_EMB_MODELS: string[] = [
     EmbModels.TEXT_EMBEDDING_3_SMALL,
@@ -35,46 +46,80 @@ export class Image {
     "image/webp",
   ];
 
-  constructor(
-    data: string,
-    chunks: string[] = [],
-    embModel: string | null = EmbModels.TEXT_EMBEDDING_3_SMALL,
-    visionModel: string | null = VisionModels.GPT_4O_MINI,
-    mimeType: string,
-    maxChunkSize: number | null = null,
-    chunkOverlap: number | null = null,
-    isSeparatorRegex: boolean = false,
-    separators: string[] | null = null,
-    keepSeparator: boolean = false,
-    url: string | null = null
-  ) {
+  constructor(data: string, mimeType: string) {
     if (!Image.isValidData(data)) {
       throw new Error("Invalid data: must be a non-empty string containing valid base64-encoded image data.");
     }
-    if (!Image.isValidMimeType(mimeType)) {
-      const supportedList = Image.SUPPORTED_MIME_TYPES.join(", ");
-      throw new Error(`Unsupported mime type: '${mimeType}'. Supported types are: ${supportedList}`);
-    }
-    if (embModel !== null && !Image.isValidEmbModel(embModel)) {
-      const supportedList = Image.SUPPORTED_EMB_MODELS.join(", ");
-      throw new Error(`Invalid embedding model: '${embModel}' is not supported. Supported models are: ${supportedList}`);
-    }
-    if (visionModel !== null && !Image.isValidVisionModel(visionModel)) {
-      const supportedList = Image.SUPPORTED_VISION_MODELS.join(", ");
-      throw new Error(`Invalid vision model: '${visionModel}' is not supported. Supported models are: ${supportedList}`);
-    }
+    
+    // MIME type validation only matters when indexing
+    // so we don't validate it here anymore
 
     this.data = data;
     this.mimeType = mimeType;
-    this._chunks = chunks;
-    this._url = url;
-    this.embModel = embModel;
-    this.visionModel = visionModel;
-    this.maxChunkSize = maxChunkSize !== null ? maxChunkSize : 0;
-    this.chunkOverlap = chunkOverlap !== null ? chunkOverlap : 0;
-    this.isSeparatorRegex = isSeparatorRegex;
-    this.separators = separators;
-    this.keepSeparator = keepSeparator;
+    this._chunks = [];
+    this._url = null;
+    
+    // Optional parameters - set to null initially
+    this.embModel = null;
+    this.visionModel = null;
+    this.maxChunkSize = null;
+    this.chunkOverlap = null;
+    this.isSeparatorRegex = null;
+    this.separators = null;
+    this.keepSeparator = null;
+    this.indexEnabled = false; // Default to false when index() isn't called
+  }
+
+  public index(options: ImageIndexOptions = {}): Image {
+    // Set index to true when this method is called
+    this.indexEnabled = true;
+    
+    // MIME type validation happens here when indexing is enabled
+    if (!Image.isValidMimeType(this.mimeType)) {
+      const supportedList = Image.SUPPORTED_MIME_TYPES.join(", ");
+      throw new Error(`Unsupported mime type: '${this.mimeType}'. Supported types are: ${supportedList}`);
+    }
+    
+    // Validate and set embedding model if provided
+    if (options.embModel !== undefined) {
+      if (!Image.isValidEmbModel(options.embModel)) {
+        const supportedList = Image.SUPPORTED_EMB_MODELS.join(", ");
+        throw new Error(`Invalid embedding model: '${options.embModel}' is not supported. Supported models are: ${supportedList}`);
+      }
+      this.embModel = options.embModel;
+    }
+    
+    // Validate and set vision model if provided
+    if (options.visionModel !== undefined) {
+      if (!Image.isValidVisionModel(options.visionModel)) {
+        const supportedList = Image.SUPPORTED_VISION_MODELS.join(", ");
+        throw new Error(`Invalid vision model: '${options.visionModel}' is not supported. Supported models are: ${supportedList}`);
+      }
+      this.visionModel = options.visionModel;
+    }
+    
+    // Set other parameters if provided
+    if (options.maxChunkSize !== undefined) {
+      this.maxChunkSize = options.maxChunkSize;
+    }
+    
+    if (options.chunkOverlap !== undefined) {
+      this.chunkOverlap = options.chunkOverlap;
+    }
+    
+    if (options.isSeparatorRegex !== undefined) {
+      this.isSeparatorRegex = options.isSeparatorRegex;
+    }
+    
+    if (options.separators !== undefined) {
+      this.separators = options.separators;
+    }
+    
+    if (options.keepSeparator !== undefined) {
+      this.keepSeparator = options.keepSeparator;
+    }
+    
+    return this;
   }
 
   private static isValidData(data: string): boolean {
@@ -114,6 +159,7 @@ export class Image {
     const result: Record<string, any> = {
       data: this.data,
       mime_type: this.mimeType,
+      index: this.indexEnabled, // Always include index flag
     };
     
     // Only include chunks if they exist
@@ -171,29 +217,57 @@ export class Image {
       throw new Error(`JSON data must include 'mime_type' field under 'xImage'. Supported types are: ${supportedList}`);
     }
 
-    const chunks = data["chunks"] || [];
-    const url = data["url"] || null;
-    const embModel = data["emb_model"] || EmbModels.TEXT_EMBEDDING_3_SMALL;
-    const visionModel = data["vision_model"] || VisionModels.GPT_4O_MINI;
-    const maxChunkSize = data["max_chunk_size"] || null;
-    const chunkOverlap = data["chunk_overlap"] || null;
-    const isSeparatorRegex = data["is_separator_regex"] || false;
-    const separators = data["separators"] || null;
-    const keepSeparator = data["keep_separator"] || false;
+    // Create the instance with required parameters
+    const instance = new Image(imageData, mimeType);
+    
+    // If index is true in the data, call index() to set up indexing
+    if (data["index"] === true) {
+      instance.index({
+        embModel: data["emb_model"],
+        visionModel: data["vision_model"],
+        maxChunkSize: data["max_chunk_size"],
+        chunkOverlap: data["chunk_overlap"],
+        isSeparatorRegex: data["is_separator_regex"],
+        separators: data["separators"],
+        keepSeparator: data["keep_separator"],
+      });
+    }
+    // Otherwise just set the attributes without setting indexEnabled=true
+    else {
+      if ("emb_model" in data) {
+        instance.embModel = data["emb_model"];
+      }
+      if ("vision_model" in data) {
+        instance.visionModel = data["vision_model"];
+      }
+      if ("max_chunk_size" in data) {
+        instance.maxChunkSize = data["max_chunk_size"];
+      }
+      if ("chunk_overlap" in data) {
+        instance.chunkOverlap = data["chunk_overlap"];
+      }
+      if ("is_separator_regex" in data) {
+        instance.isSeparatorRegex = data["is_separator_regex"];
+      }
+      if ("separators" in data) {
+        instance.separators = data["separators"];
+      }
+      if ("keep_separator" in data) {
+        instance.keepSeparator = data["keep_separator"];
+      }
+    }
+    
+    // Set chunks if they exist in the JSON
+    if ("chunks" in data) {
+      instance._chunks = data["chunks"] || [];
+    }
+    
+    // Set URL if it exists in the JSON
+    if ("url" in data) {
+      instance._url = data["url"];
+    }
 
-    return new Image(
-      imageData,
-      chunks,
-      embModel,
-      visionModel,
-      mimeType,
-      maxChunkSize,
-      chunkOverlap,
-      isSeparatorRegex,
-      separators,
-      keepSeparator,
-      url
-    );
+    return instance;
   }
 
   public toString(): string {

@@ -1,13 +1,24 @@
 import { EmbModels } from "./embModels";
+
+export interface TextIndexOptions {
+  embModel?: string;
+  maxChunkSize?: number;
+  chunkOverlap?: number;
+  isSeparatorRegex?: boolean;
+  separators?: string[] | null;
+  keepSeparator?: boolean;
+}
+
 export class Text {
   private text: string;
   private chunks: string[];
-  private embModel: string;
-  private maxChunkSize: number;
-  private chunkOverlap: number;
-  private isSeparatorRegex: boolean;
+  private embModel: string | null;
+  private maxChunkSize: number | null;
+  private chunkOverlap: number | null;
+  private isSeparatorRegex: boolean | null;
   private separators: string[] | null;
-  private keepSeparator: boolean;
+  private keepSeparator: boolean | null;
+  private indexEnabled: boolean;
 
   private static SUPPORTED_EMB_MODELS: string[] = [
     EmbModels.TEXT_EMBEDDING_3_SMALL,
@@ -15,31 +26,58 @@ export class Text {
     EmbModels.TEXT_EMBEDDING_ADA_002,
   ];
 
-  constructor(
-    text: string,
-    chunks: string[] = [],
-    embModel: string = EmbModels.TEXT_EMBEDDING_3_SMALL,
-    maxChunkSize: number = 200,
-    chunkOverlap: number = 20,
-    isSeparatorRegex: boolean = false,
-    separators: string[] | null = null,
-    keepSeparator: boolean = false
-  ) {
+  constructor(text: string) {
     if (!Text.isValidText(text)) {
       throw new Error("Invalid text: must be a non-empty string.");
     }
-    if (!Text.isValidEmbModel(embModel)) {
-      throw new Error(`Invalid embedding model: ${embModel} is not supported.`);
-    }
 
     this.text = text;
-    this.chunks = chunks;
-    this.embModel = embModel;
-    this.maxChunkSize = maxChunkSize;
-    this.chunkOverlap = chunkOverlap;
-    this.isSeparatorRegex = isSeparatorRegex;
-    this.separators = separators;
-    this.keepSeparator = keepSeparator;
+    this.chunks = [];
+    
+    // Optional parameters - set to null initially
+    this.embModel = null;
+    this.maxChunkSize = null;
+    this.chunkOverlap = null;
+    this.isSeparatorRegex = null;
+    this.separators = null;
+    this.keepSeparator = null;
+    this.indexEnabled = false; // Default to false when index() isn't called
+  }
+
+  public index(options: TextIndexOptions = {}): Text {
+    // Set index to true when this method is called
+    this.indexEnabled = true;
+    
+    // Validate and set embedding model if provided
+    if (options.embModel !== undefined) {
+      if (!Text.isValidEmbModel(options.embModel)) {
+        throw new Error(`Invalid embedding model: ${options.embModel} is not supported.`);
+      }
+      this.embModel = options.embModel;
+    }
+    
+    // Set other parameters if provided
+    if (options.maxChunkSize !== undefined) {
+      this.maxChunkSize = options.maxChunkSize;
+    }
+    
+    if (options.chunkOverlap !== undefined) {
+      this.chunkOverlap = options.chunkOverlap;
+    }
+    
+    if (options.isSeparatorRegex !== undefined) {
+      this.isSeparatorRegex = options.isSeparatorRegex;
+    }
+    
+    if (options.separators !== undefined) {
+      this.separators = options.separators;
+    }
+    
+    if (options.keepSeparator !== undefined) {
+      this.keepSeparator = options.keepSeparator;
+    }
+    
+    return this;
   }
 
   private static isValidText(text: string): boolean {
@@ -51,17 +89,34 @@ export class Text {
   }
 
   public toJSON(): Record<string, any> {
+    const result: Record<string, any> = {
+      text: this.text,
+      chunks: this.chunks,
+      index: this.indexEnabled, // Always include index flag
+    };
+    
+    // Add other fields only if they are not null (when set via index() method)
+    if (this.embModel !== null) {
+      result.emb_model = this.embModel;
+    }
+    if (this.maxChunkSize !== null) {
+      result.max_chunk_size = this.maxChunkSize;
+    }
+    if (this.chunkOverlap !== null) {
+      result.chunk_overlap = this.chunkOverlap;
+    }
+    if (this.isSeparatorRegex !== null) {
+      result.is_separator_regex = this.isSeparatorRegex;
+    }
+    if (this.separators !== null) {
+      result.separators = this.separators;
+    }
+    if (this.keepSeparator !== null) {
+      result.keep_separator = this.keepSeparator;
+    }
+    
     return {
-      "xText": {
-        text: this.text,
-        chunks: this.chunks,
-        emb_model: this.embModel,
-        max_chunk_size: this.maxChunkSize,
-        chunk_overlap: this.chunkOverlap,
-        is_separator_regex: this.isSeparatorRegex,
-        separators: this.separators,
-        keep_separator: this.keepSeparator,
-      },
+      "xText": result
     };
   }
 
@@ -76,27 +131,47 @@ export class Text {
       throw new Error("JSON data must include 'text' under 'xText'.");
     }
 
-    const chunks = data["chunks"] || [];
-    const embModel = data["emb_model"] || EmbModels.TEXT_EMBEDDING_3_SMALL;
-    const maxChunkSize = data["max_chunk_size"] || 200;
-    const chunkOverlap = data["chunk_overlap"] || 20;
-    const isSeparatorRegex = data["is_separator_regex"] || false;
-    const separators = data["separators"] || null;
-    const keepSeparator = data["keep_separator"] || false;
+    // Create the instance with just the text
+    const instance = new Text(text);
+    
+    // If index is true in the data, call index() to set up indexing
+    if (data["index"] === true) {
+      instance.index({
+        embModel: data["emb_model"],
+        maxChunkSize: data["max_chunk_size"],
+        chunkOverlap: data["chunk_overlap"],
+        isSeparatorRegex: data["is_separator_regex"],
+        separators: data["separators"],
+        keepSeparator: data["keep_separator"],
+      });
+    }
+    // Otherwise just set the attributes without setting indexEnabled=true
+    else {
+      if ("emb_model" in data) {
+        instance.embModel = data["emb_model"];
+      }
+      if ("max_chunk_size" in data) {
+        instance.maxChunkSize = data["max_chunk_size"];
+      }
+      if ("chunk_overlap" in data) {
+        instance.chunkOverlap = data["chunk_overlap"];
+      }
+      if ("is_separator_regex" in data) {
+        instance.isSeparatorRegex = data["is_separator_regex"];
+      }
+      if ("separators" in data) {
+        instance.separators = data["separators"];
+      }
+      if ("keep_separator" in data) {
+        instance.keepSeparator = data["keep_separator"];
+      }
+    }
 
-    return new Text(
-      text,
-      chunks,
-      embModel,
-      maxChunkSize,
-      chunkOverlap,
-      isSeparatorRegex,
-      separators,
-      keepSeparator
-    );
+    instance.chunks = data["chunks"] || [];
+    return instance;
   }
 
   public toString(): string {
-    return `Text(\"${this.text}\")`;
+    return `Text("${this.text}")`;
   }
 }

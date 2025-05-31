@@ -2,7 +2,9 @@ export { OneNode } from "./client/OneNode";
 export { Database } from "./client/Database";
 export { Collection } from "./client/Collection";
 export { Text } from "./ejson/text";
+export type { TextIndexOptions } from "./ejson/text";
 export { Image } from "./ejson/image";
+export type { ImageIndexOptions } from "./ejson/image";
 export { EmbModels } from "./ejson/embModels";
 export { VisionModels } from "./ejson/visionModels";
 
