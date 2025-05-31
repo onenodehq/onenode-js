@@ -44,7 +44,7 @@ export class Text {
     this.indexEnabled = false; // Default to false when index() isn't called
   }
 
-  public index(options: TextIndexOptions = {}): Text {
+  public enableIndex(options: TextIndexOptions = {}): Text {
     // Set index to true when this method is called
     this.indexEnabled = true;
     
@@ -134,9 +134,9 @@ export class Text {
     // Create the instance with just the text
     const instance = new Text(text);
     
-    // If index is true in the data, call index() to set up indexing
+    // If index is true in the data, call enableIndex() to set up indexing
     if (data["index"] === true) {
-      instance.index({
+      instance.enableIndex({
         embModel: data["emb_model"],
         maxChunkSize: data["max_chunk_size"],
         chunkOverlap: data["chunk_overlap"],

@@ -70,7 +70,7 @@ export class Image {
     this.indexEnabled = false; // Default to false when index() isn't called
   }
 
-  public index(options: ImageIndexOptions = {}): Image {
+  public enableIndex(options: ImageIndexOptions = {}): Image {
     // Set index to true when this method is called
     this.indexEnabled = true;
     
@@ -220,9 +220,9 @@ export class Image {
     // Create the instance with required parameters
     const instance = new Image(imageData, mimeType);
     
-    // If index is true in the data, call index() to set up indexing
+    // If index is true in the data, call enableIndex() to set up indexing
     if (data["index"] === true) {
-      instance.index({
+      instance.enableIndex({
         embModel: data["emb_model"],
         visionModel: data["vision_model"],
         maxChunkSize: data["max_chunk_size"],
