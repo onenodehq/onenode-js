@@ -67,26 +67,36 @@ export class Collection {
   private readonly projectId: string;
   private readonly dbName: string;
   private readonly collectionName: string;
+  private readonly isAnonymous: boolean;
+  
   constructor(
     apiKey: string,
     projectId: string,
     dbName: string,
-    collectionName: string
+    collectionName: string,
+    isAnonymous: boolean = false
   ) {
     this.apiKey = apiKey;
     this.projectId = projectId;
     this.dbName = dbName;
     this.collectionName = collectionName;
+    this.isAnonymous = isAnonymous;
   }
 
   private getCollectionUrl(): string {
-    return `https://api.onenode.ai/v0/db/${this.projectId}_${this.dbName}/collection/${this.collectionName}/document`;
+    const baseUrl = `https://api.onenode.ai/v0/db/${this.projectId}_${this.dbName}/collection/${this.collectionName}/document`;
+    if (this.isAnonymous) {
+      return baseUrl + "/anon";
+    }
+    return baseUrl;
   }
 
   private getHeaders(): HeadersInit {
-    return {
-      Authorization: `Bearer ${this.apiKey}`,
-    };
+    const headers: HeadersInit = {};
+    if (!this.isAnonymous) {
+      headers.Authorization = `Bearer ${this.apiKey}`;
+    }
+    return headers;
   }
 
   private serialize(value: unknown, depth = 0): unknown {
@@ -269,7 +279,10 @@ export class Collection {
     limit?: number,
     skip?: number
   ): Promise<TDocument[]> {
-    const url = `${this.getCollectionUrl()}/find`;
+    let url = `${this.getCollectionUrl()}/find`;
+    if (this.isAnonymous) {
+      url += "/anon";
+    }
     const headers = this.getHeaders();
     
     const formData = new FormData();
@@ -311,7 +324,10 @@ export class Collection {
       includeValues?: boolean;
     }
   ): Promise<TQueryResult[]> {
-    const url = `${this.getCollectionUrl()}/query`;
+    let url = `${this.getCollectionUrl()}/query`;
+    if (this.isAnonymous) {
+      url += "/anon";
+    }
     const headers = this.getHeaders();
 
     const formData = new FormData();
@@ -344,6 +360,10 @@ export class Collection {
   }
 
   public async drop(): Promise<void> {
+    if (this.isAnonymous) {
+      throw new ClientRequestError(403, "Collection deletion is not allowed in anonymous mode.");
+    }
+    
     const url = `https://api.onenode.ai/v0/db/${this.projectId}_${this.dbName}/collection/${this.collectionName}`;
     const headers = this.getHeaders();
     

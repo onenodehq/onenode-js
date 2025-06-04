@@ -4,11 +4,13 @@ export class Database {
   private apiKey: string;
   private projectId: string;
   private dbName: string;
+  private isAnonymous: boolean;
 
-  constructor(apiKey: string, projectId: string, dbName: string) {
+  constructor(apiKey: string, projectId: string, dbName: string, isAnonymous: boolean = false) {
     this.apiKey = apiKey;
     this.projectId = projectId;
     this.dbName = dbName;
+    this.isAnonymous = isAnonymous;
   }
 
   public collection(collectionName: string): Collection {
@@ -16,7 +18,8 @@ export class Database {
       this.apiKey,
       this.projectId,
       this.dbName,
-      collectionName
+      collectionName,
+      this.isAnonymous
     );
   }
 }
