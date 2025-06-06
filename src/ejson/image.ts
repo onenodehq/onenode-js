@@ -12,7 +12,8 @@ export interface ImageIndexOptions {
 }
 
 export class Image {
-  private data: string;
+  private data: string | null;
+  private binaryData: File | Blob | ArrayBuffer | null;
   private mimeType: string;
   private _chunks: string[];
   private _url: string | null;
@@ -46,16 +47,38 @@ export class Image {
     "image/webp",
   ];
 
-  constructor(data: string, mimeType: string) {
-    if (!Image.isValidData(data)) {
-      throw new Error("Invalid data: must be a non-empty string containing valid base64-encoded image data.");
+  constructor(data: string | File | Blob | ArrayBuffer, mimeType?: string) {
+    // Handle different input types
+    if (typeof data === "string") {
+      // String input - assume base64
+      if (data && !Image.isValidData(data)) {
+        throw new Error("Invalid data: must be a non-empty string containing valid base64-encoded image data.");
+      }
+      this.data = data;
+      this.binaryData = null;
+      this.mimeType = mimeType || "";
+    } else if (data instanceof File) {
+      // File input
+      this.data = null;
+      this.binaryData = data;
+      this.mimeType = mimeType || data.type || "";
+    } else if (data instanceof Blob) {
+      // Blob input
+      this.data = null;
+      this.binaryData = data;
+      this.mimeType = mimeType || data.type || "";
+    } else if (data instanceof ArrayBuffer) {
+      // ArrayBuffer input
+      this.data = null;
+      this.binaryData = data;
+      this.mimeType = mimeType || "";
+    } else {
+      throw new Error("Invalid data type: must be string (base64), File, Blob, or ArrayBuffer");
     }
     
     // MIME type validation only matters when indexing
     // so we don't validate it here anymore
 
-    this.data = data;
-    this.mimeType = mimeType;
     this._chunks = [];
     this._url = null;
     
@@ -68,6 +91,36 @@ export class Image {
     this.separators = null;
     this.keepSeparator = null;
     this.indexEnabled = false; // Default to false when index() isn't called
+  }
+
+  public getBinaryData(): File | Blob | ArrayBuffer | null {
+    return this.binaryData;
+  }
+
+  public hasBinaryData(): boolean {
+    return this.binaryData !== null;
+  }
+
+  public async getBinaryDataAsBlob(): Promise<Blob | null> {
+    if (this.binaryData instanceof Blob || this.binaryData instanceof File) {
+      return this.binaryData;
+    } else if (this.binaryData instanceof ArrayBuffer) {
+      return new Blob([this.binaryData], { type: this.mimeType });
+    } else if (this.data) {
+      try {
+        // Convert base64 to Blob
+        const byteCharacters = atob(this.data);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        return new Blob([byteArray], { type: this.mimeType });
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
   }
 
   public enableIndex(options: ImageIndexOptions = {}): Image {
@@ -157,10 +210,14 @@ export class Image {
 
   public toJSON(): Record<string, any> {
     const result: Record<string, any> = {
-      data: this.data,
       mime_type: this.mimeType,
       index: this.indexEnabled, // Always include index flag
     };
+    
+    // Only include base64 data if we don't have binary data (backward compatibility)
+    if (this.data && !this.hasBinaryData()) {
+      result.data = this.data;
+    }
     
     // Only include chunks if they exist
     if (this._chunks && this._chunks.length > 0) {
@@ -268,6 +325,22 @@ export class Image {
     }
 
     return instance;
+  }
+
+  public static fromFile(file: File): Image {
+    return new Image(file);
+  }
+
+  public static fromBlob(blob: Blob, mimeType?: string): Image {
+    return new Image(blob, mimeType);
+  }
+
+  public static fromArrayBuffer(buffer: ArrayBuffer, mimeType: string): Image {
+    return new Image(buffer, mimeType);
+  }
+
+  public static fromBase64(base64Data: string, mimeType: string): Image {
+    return new Image(base64Data, mimeType);
   }
 
   public toString(): string {

@@ -14,6 +14,7 @@ type SerializerFunction = (v: any) => Record<string, any>;
 
 const BSON_SERIALIZERS: Record<string, SerializerFunction> = {
   Text: (v: Text) => ({ "xText": v.toJSON() }),
+  Image: (v: Image) => ({ "xImage": v.toJSON() }),
   ObjectId: (v: ObjectId) => ({ $oid: v.toString() }),
   Date: (v: Date) => ({ $date: v.toISOString() }),
   Decimal128: (v: Decimal128) => ({ $numberDecimal: v.toString() }),
@@ -122,6 +123,10 @@ export class Collection {
       return value.toJSON();
     }
 
+    if (value instanceof Image) {
+      return value.toJSON();
+    }
+
     const constructor = (value as object).constructor;
     const serializer = BSON_SERIALIZERS[constructor.name];
     if (serializer) {
@@ -191,6 +196,37 @@ export class Collection {
     return nested;
   }
 
+  private async extractBinaryData(documents: unknown[]): Promise<Record<string, Blob>> {
+    const files: Record<string, Blob> = {};
+
+    const extractFromValue = async (value: unknown, docIndex: number, path: string = ""): Promise<void> => {
+      if (value instanceof Image && value.hasBinaryData()) {
+        // Create field name following the pattern: doc_{index}.{field_path}.xImage.data
+        const fieldName = path ? `doc_${docIndex}.${path}.xImage.data` : `doc_${docIndex}.xImage.data`;
+        const binaryData = await value.getBinaryDataAsBlob();
+        if (binaryData) {
+          files[fieldName] = binaryData;
+        }
+      } else if (Array.isArray(value)) {
+        for (let i = 0; i < value.length; i++) {
+          const newPath = path ? `${path}.${i}` : `${i}`;
+          await extractFromValue(value[i], docIndex, newPath);
+        }
+      } else if (value && typeof value === "object") {
+        for (const [key, val] of Object.entries(value)) {
+          const newPath = path ? `${path}.${key}` : key;
+          await extractFromValue(val, docIndex, newPath);
+        }
+      }
+    };
+
+    for (let docIndex = 0; docIndex < documents.length; docIndex++) {
+      await extractFromValue(documents[docIndex], docIndex);
+    }
+
+    return files;
+  }
+
   private async handleResponse(response: Response): Promise<unknown> {
     try {
       if (!response.ok) {
@@ -222,8 +258,16 @@ export class Collection {
     const headers = this.getHeaders();
     const serializedDocs = documents.map((doc) => this.serialize(doc));
 
+    // Extract binary data for multipart form
+    const binaryFiles = await this.extractBinaryData(documents);
+
     const formData = new FormData();
     formData.append('documents', JSON.stringify(serializedDocs));
+
+    // Add binary files to form data
+    for (const [fieldName, blob] of Object.entries(binaryFiles)) {
+      formData.append(fieldName, blob, fieldName);
+    }
 
     const response = await fetch(url, {
       method: "POST",
@@ -242,10 +286,18 @@ export class Collection {
     const url = this.getCollectionUrl();
     const headers = this.getHeaders();
     
+    // Extract binary data for multipart form (from update data)
+    const binaryFiles = await this.extractBinaryData([update]);
+    
     const formData = new FormData();
     formData.append('filter', JSON.stringify(this.serialize(filter)));
     formData.append('update', JSON.stringify(this.serialize(update)));
     formData.append('upsert', String(upsert));
+
+    // Add binary files to form data
+    for (const [fieldName, blob] of Object.entries(binaryFiles)) {
+      formData.append(fieldName, blob, fieldName);
+    }
 
     const response = await fetch(url, {
       method: "PUT",
