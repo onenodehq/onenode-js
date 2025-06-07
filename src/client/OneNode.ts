@@ -6,6 +6,7 @@ export class OneNode {
   private projectId: string;
   private apiKey: string;
   private isAnonymous: boolean;
+  public readonly baseUrl: string;
 
   constructor() {
     this.projectId = process.env.ONENODE_PROJECT_ID || "";
@@ -21,10 +22,13 @@ export class OneNode {
       // Authenticated mode - require project ID
       if (!this.projectId) {
         throw new Error(
-          "Project ID must be specified either as an argument or in the environment variable ONENODE_PROJECT_ID."
+          "Missing Project ID: Please provide the Project ID as an argument or set it in the ONENODE_PROJECT_ID environment variable. " +
+          "Tip: Ensure your environment file (e.g., .env) is loaded."
         );
       }
     }
+
+    this.baseUrl = `https://api.onenode.ai/${this.projectId}`.replace(/\/$/, "");
   }
 
   private getOrCreateAnonymousProjectId(): string {

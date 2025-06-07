@@ -13,8 +13,8 @@ import { Image } from "../ejson/image";
 type SerializerFunction = (v: any) => Record<string, any>;
 
 const BSON_SERIALIZERS: Record<string, SerializerFunction> = {
-  Text: (v: Text) => ({ "xText": v.toJSON() }),
-  Image: (v: Image) => ({ "xImage": v.toJSON() }),
+  Text: (v: Text) => v.serialize(),
+  Image: (v: Image) => v.serialize(),
   ObjectId: (v: ObjectId) => ({ $oid: v.toString() }),
   Date: (v: Date) => ({ $date: v.toISOString() }),
   Decimal128: (v: Decimal128) => ({ $numberDecimal: v.toString() }),
@@ -85,11 +85,7 @@ export class Collection {
   }
 
   private getCollectionUrl(): string {
-    const baseUrl = `https://api.onenode.ai/v0/db/${this.projectId}_${this.dbName}/collection/${this.collectionName}/document`;
-    if (this.isAnonymous) {
-      return baseUrl + "/anon";
-    }
-    return baseUrl;
+    return `https://api.onenode.ai/v0/db/${this.projectId}_${this.dbName}/collection/${this.collectionName}`;
   }
 
   private getHeaders(): HeadersInit {
@@ -120,11 +116,11 @@ export class Collection {
     }
 
     if (value instanceof Text) {
-      return value.toJSON();
+      return value.serialize();
     }
 
     if (value instanceof Image) {
-      return value.toJSON();
+      return value.serialize();
     }
 
     const constructor = (value as object).constructor;
@@ -168,11 +164,11 @@ export class Collection {
     const obj = value as Record<string, any>;
 
     if ("xText" in obj) {
-      return Text.fromJSON(obj);
+      return Text._deserialize(obj);
     }
     
     if ("xImage" in obj) {
-      return Image.fromJSON(obj);
+      return Image._deserialize(obj);
     }
 
     if ("$oid" in obj) return new ObjectId(obj["$oid"]);
@@ -203,9 +199,23 @@ export class Collection {
       if (value instanceof Image && value.hasBinaryData()) {
         // Create field name following the pattern: doc_{index}.{field_path}.xImage.data
         const fieldName = path ? `doc_${docIndex}.${path}.xImage.data` : `doc_${docIndex}.xImage.data`;
-        const binaryData = await value.getBinaryDataAsBlob();
+        const binaryData = value.getBinaryData();
         if (binaryData) {
-          files[fieldName] = binaryData;
+          // Convert to Blob if needed
+          let blob: Blob | null = null;
+          if (binaryData instanceof Blob) {
+            blob = binaryData;
+          } else if (binaryData instanceof File) {
+            blob = binaryData;
+          } else if (binaryData instanceof ArrayBuffer) {
+            blob = new Blob([binaryData]);
+          } else if (binaryData instanceof Uint8Array) {
+            blob = new Blob([binaryData]);
+          }
+          
+          if (blob) {
+            files[fieldName] = blob;
+          }
         }
       } else if (Array.isArray(value)) {
         for (let i = 0; i < value.length; i++) {
@@ -331,7 +341,7 @@ export class Collection {
     limit?: number,
     skip?: number
   ): Promise<TDocument[]> {
-    let url = `${this.getCollectionUrl()}/find`;
+    let url = `${this.getCollectionUrl()}/document/find`;
     if (this.isAnonymous) {
       url += "/anon";
     }

@@ -1,5 +1,4 @@
-import { EmbModels } from "./embModels";
-import { VisionModels } from "./visionModels";
+import { Models } from "./models";
 
 export interface ImageIndexOptions {
   embModel?: string;
@@ -12,11 +11,9 @@ export interface ImageIndexOptions {
 }
 
 export class Image {
-  private data: string | null;
-  private binaryData: File | Blob | ArrayBuffer | null;
+  private data: string | File | Blob | ArrayBuffer | Uint8Array;
   private mimeType: string;
   private _chunks: string[];
-  private _url: string | null;
   private embModel: string | null;
   private visionModel: string | null;
   private maxChunkSize: number | null;
@@ -25,19 +22,6 @@ export class Image {
   private separators: string[] | null;
   private keepSeparator: boolean | null;
   private indexEnabled: boolean;
-
-  private static SUPPORTED_EMB_MODELS: string[] = [
-    EmbModels.TEXT_EMBEDDING_3_SMALL,
-    EmbModels.TEXT_EMBEDDING_3_LARGE,
-    EmbModels.TEXT_EMBEDDING_ADA_002,
-  ];
-
-  private static SUPPORTED_VISION_MODELS: string[] = [
-    VisionModels.GPT_4O_MINI,
-    VisionModels.GPT_4O,
-    VisionModels.GPT_4_TURBO,
-    VisionModels.O1,
-  ];
   
   private static SUPPORTED_MIME_TYPES: string[] = [
     "image/jpeg",
@@ -47,40 +31,57 @@ export class Image {
     "image/webp",
   ];
 
-  constructor(data: string | File | Blob | ArrayBuffer, mimeType?: string) {
+  constructor(data: string | File | Blob | ArrayBuffer | Uint8Array) {
     // Handle different input types
     if (typeof data === "string") {
-      // String input - assume base64
-      if (data && !Image.isValidData(data)) {
-        throw new Error("Invalid data: must be a non-empty string containing valid base64-encoded image data.");
+      // String input - could be base64 or data URL
+      if (data.startsWith("data:")) {
+        // Data URL format
+        const matches = data.match(/^data:([^;]+);base64,(.+)$/);
+        if (!matches) {
+          throw new Error("Invalid data URL format. Expected format: data:image/type;base64,<data>");
+        }
+        const [, urlMimeType, base64Data] = matches;
+        this.data = base64Data;
+        this.mimeType = urlMimeType;
+      } else if (data.startsWith('http')) {
+        // URL input
+        this.data = data;
+        // Try to extract mime type from URL extension
+        this.mimeType = this.extractMimeTypeFromUrl(data);
+      } else {
+        // Regular base64 string
+        if (!Image.isValidData(data)) {
+          throw new Error("Invalid data: must be a non-empty string containing valid base64-encoded image data.");
+        }
+        this.data = data;
+        // Extract mime type from base64 data
+        this.mimeType = this.extractMimeTypeFromBase64(data);
       }
-      this.data = data;
-      this.binaryData = null;
-      this.mimeType = mimeType || "";
     } else if (data instanceof File) {
       // File input
-      this.data = null;
-      this.binaryData = data;
-      this.mimeType = mimeType || data.type || "";
+      this.data = data;
+      this.mimeType = data.type || this.extractMimeTypeFromFileName(data.name);
     } else if (data instanceof Blob) {
       // Blob input
-      this.data = null;
-      this.binaryData = data;
-      this.mimeType = mimeType || data.type || "";
+      this.data = data;
+      this.mimeType = data.type || "image/jpeg"; // Default if type is not set
     } else if (data instanceof ArrayBuffer) {
       // ArrayBuffer input
-      this.data = null;
-      this.binaryData = data;
-      this.mimeType = mimeType || "";
+      this.data = data;
+      this.mimeType = this.extractMimeTypeFromArrayBuffer(data);
+    } else if (data instanceof Uint8Array) {
+      // Uint8Array input
+      this.data = data;
+      this.mimeType = this.extractMimeTypeFromUint8Array(data);
     } else {
-      throw new Error("Invalid data type: must be string (base64), File, Blob, or ArrayBuffer");
+      throw new Error("Invalid data type: must be string (base64), File, Blob, ArrayBuffer, or Uint8Array");
     }
     
     // MIME type validation only matters when indexing
     // so we don't validate it here anymore
 
     this._chunks = [];
-    this._url = null;
     
     // Optional parameters - set to null initially
     this.embModel = null;
@@ -93,34 +94,109 @@ export class Image {
     this.indexEnabled = false; // Default to false when index() isn't called
   }
 
-  public getBinaryData(): File | Blob | ArrayBuffer | null {
-    return this.binaryData;
+  private extractMimeTypeFromUrl(url: string): string {
+    const urlLower = url.toLowerCase();
+    if (urlLower.endsWith('.jpg') || urlLower.endsWith('.jpeg')) {
+      return 'image/jpeg';
+    } else if (urlLower.endsWith('.png')) {
+      return 'image/png';
+    } else if (urlLower.endsWith('.gif')) {
+      return 'image/gif';
+    } else if (urlLower.endsWith('.webp')) {
+      return 'image/webp';
+    } else {
+      // Default to JPEG if unable to determine
+      return 'image/jpeg';
+    }
+  }
+
+  private extractMimeTypeFromFileName(fileName: string): string {
+    const nameLower = fileName.toLowerCase();
+    if (nameLower.endsWith('.jpg') || nameLower.endsWith('.jpeg')) {
+      return 'image/jpeg';
+    } else if (nameLower.endsWith('.png')) {
+      return 'image/png';
+    } else if (nameLower.endsWith('.gif')) {
+      return 'image/gif';
+    } else if (nameLower.endsWith('.webp')) {
+      return 'image/webp';
+    } else {
+      return 'image/jpeg'; // Default
+    }
+  }
+
+  private extractMimeTypeFromBase64(base64Data: string): string {
+    try {
+      // Decode enough base64 data to get magic bytes (at least 16 bytes encoded = ~22 chars)
+      // Use first 100 chars to be safe, which gives us plenty of decoded bytes
+      const sampleData = base64Data.length > 100 ? base64Data.substring(0, 100) : base64Data;
+      const binaryString = atob(sampleData);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      return this.extractMimeTypeFromBytes(bytes);
+    } catch {
+      // Default to JPEG if unable to determine
+      return 'image/jpeg';
+    }
+  }
+
+  private extractMimeTypeFromArrayBuffer(buffer: ArrayBuffer): string {
+    const bytes = new Uint8Array(buffer);
+    return this.extractMimeTypeFromBytes(bytes);
+  }
+
+  private extractMimeTypeFromUint8Array(bytes: Uint8Array): string {
+    return this.extractMimeTypeFromBytes(bytes);
+  }
+
+  private extractMimeTypeFromBytes(bytes: Uint8Array): string {
+    if (bytes.length < 4) {
+      return 'image/jpeg'; // Default
+    }
+
+    // Check magic bytes
+    if (bytes[0] === 0xFF && bytes[1] === 0xD8 && bytes[2] === 0xFF) {
+      return 'image/jpeg';
+    } else if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4E && bytes[3] === 0x47 &&
+               bytes.length > 7 && bytes[4] === 0x0D && bytes[5] === 0x0A && bytes[6] === 0x1A && bytes[7] === 0x0A) {
+      return 'image/png';
+    } else if (bytes.length >= 6 && 
+               ((bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x38 && bytes[4] === 0x37 && bytes[5] === 0x61) ||
+                (bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x38 && bytes[4] === 0x39 && bytes[5] === 0x61))) {
+      return 'image/gif';
+    } else if (bytes.length >= 12 && bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46 &&
+               bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50) {
+      return 'image/webp';
+    } else {
+      // Default to JPEG if unable to determine
+      return 'image/jpeg';
+    }
+  }
+
+  public getData(): string | File | Blob | ArrayBuffer | Uint8Array {
+    return this.data;
+  }
+
+  public getBinaryData(): File | Blob | ArrayBuffer | Uint8Array | null {
+    return typeof this.data === "string" ? null : this.data;
+  }
+
+  public getBase64Data(): string | null {
+    // Return base64 data only if it's a string and not a URL
+    if (typeof this.data === "string" && !this.data.startsWith('http')) {
+      return this.data;
+    }
+    return null;
   }
 
   public hasBinaryData(): boolean {
-    return this.binaryData !== null;
-  }
-
-  public async getBinaryDataAsBlob(): Promise<Blob | null> {
-    if (this.binaryData instanceof Blob || this.binaryData instanceof File) {
-      return this.binaryData;
-    } else if (this.binaryData instanceof ArrayBuffer) {
-      return new Blob([this.binaryData], { type: this.mimeType });
-    } else if (this.data) {
-      try {
-        // Convert base64 to Blob
-        const byteCharacters = atob(this.data);
-        const byteNumbers = new Array(byteCharacters.length);
-        for (let i = 0; i < byteCharacters.length; i++) {
-          byteNumbers[i] = byteCharacters.charCodeAt(i);
-        }
-        const byteArray = new Uint8Array(byteNumbers);
-        return new Blob([byteArray], { type: this.mimeType });
-      } catch (error) {
-        return null;
-      }
+    // Consider URL strings as processed data, not binary
+    if (typeof this.data === "string") {
+      return this.data.startsWith('http');  // URL is considered as processed data
     }
-    return null;
+    return true;  // Non-string data is binary
   }
 
   public enableIndex(options: ImageIndexOptions = {}): Image {
@@ -136,7 +212,7 @@ export class Image {
     // Validate and set embedding model if provided
     if (options.embModel !== undefined) {
       if (!Image.isValidEmbModel(options.embModel)) {
-        const supportedList = Image.SUPPORTED_EMB_MODELS.join(", ");
+        const supportedList = Models.TextToEmbedding.OpenAI.values().join(", ");
         throw new Error(`Invalid embedding model: '${options.embModel}' is not supported. Supported models are: ${supportedList}`);
       }
       this.embModel = options.embModel;
@@ -145,7 +221,7 @@ export class Image {
     // Validate and set vision model if provided
     if (options.visionModel !== undefined) {
       if (!Image.isValidVisionModel(options.visionModel)) {
-        const supportedList = Image.SUPPORTED_VISION_MODELS.join(", ");
+        const supportedList = Models.ImageToText.OpenAI.values().join(", ");
         throw new Error(`Invalid vision model: '${options.visionModel}' is not supported. Supported models are: ${supportedList}`);
       }
       this.visionModel = options.visionModel;
@@ -179,6 +255,10 @@ export class Image {
     if (typeof data !== "string" || data.trim().length === 0) {
       return false;
     }
+    // Accept URLs as valid data
+    if (data.startsWith('http')) {
+      return true;
+    }
     try {
       // Check if the string is valid base64
       Buffer.from(data, "base64");
@@ -193,11 +273,11 @@ export class Image {
   }
 
   private static isValidEmbModel(embModel: string): boolean {
-    return Image.SUPPORTED_EMB_MODELS.includes(embModel);
+    return Models.TextToEmbedding.OpenAI.values().includes(embModel);
   }
 
   private static isValidVisionModel(visionModel: string): boolean {
-    return Image.SUPPORTED_VISION_MODELS.includes(visionModel);
+    return Models.ImageToText.OpenAI.values().includes(visionModel);
   }
 
   public get chunks(): string[] {
@@ -205,31 +285,24 @@ export class Image {
   }
 
   public get url(): string | null {
-    return this._url;
+    // Check if data contains a URL
+    if (typeof this.data === 'string' && this.data.startsWith('http')) {
+      return this.data;
+    }
+    return null;
   }
 
-  public toJSON(): Record<string, any> {
+  public serialize(): Record<string, any> {
+    // Start with required fields
     const result: Record<string, any> = {
       mime_type: this.mimeType,
-      index: this.indexEnabled, // Always include index flag
+      index: this.indexEnabled,  // Always include index flag
     };
     
-    // Only include base64 data if we don't have binary data (backward compatibility)
-    if (this.data && !this.hasBinaryData()) {
-      result.data = this.data;
-    }
-    
-    // Only include chunks if they exist
-    if (this._chunks && this._chunks.length > 0) {
-      result.chunks = this._chunks;
-    }
-    
-    // Include URL if it exists
-    if (this._url) {
-      result.url = this._url;
-    }
-    
-    // Add other fields only if they are not null
+    // Never include binary/base64 data in JSON - always send as separate binary
+    // The API layer will use getBinaryData() to extract bytes for transmission
+
+    // Add other fields only if they are not null (when set via enableIndex() method)
     if (this.embModel !== null) {
       result.emb_model = this.embModel;
     }
@@ -251,101 +324,75 @@ export class Image {
     if (this.keepSeparator !== null) {
       result.keep_separator = this.keepSeparator;
     }
+
+    // Include chunks and data (if it's a URL string)
+    result.chunks = this._chunks;
+    if (typeof this.data === 'string') {
+      result.data = this.data;
+    }
     
     return {
       "xImage": result
     };
   }
 
-  public static fromJSON(data: Record<string, any>): Image {
+  static _deserialize(data: Record<string, any>): Image {
     // Check if the data is wrapped with 'xImage'
     if ("xImage" in data) {
       data = data["xImage"];
     }
     
-    const imageData = data["data"];
-    if (imageData === undefined || imageData === null) {
-      throw new Error("JSON data must include 'data' field under 'xImage'. This field should contain base64-encoded image data.");
-    }
-
-    const mimeType = data["mime_type"];
-    if (mimeType === undefined || mimeType === null) {
-      const supportedList = Image.SUPPORTED_MIME_TYPES.join(", ");
-      throw new Error(`JSON data must include 'mime_type' field under 'xImage'. Supported types are: ${supportedList}`);
-    }
-
-    // Create the instance with required parameters
-    const instance = new Image(imageData, mimeType);
-    
-    // If index is true in the data, call enableIndex() to set up indexing
-    if (data["index"] === true) {
-      instance.enableIndex({
-        embModel: data["emb_model"],
-        visionModel: data["vision_model"],
-        maxChunkSize: data["max_chunk_size"],
-        chunkOverlap: data["chunk_overlap"],
-        isSeparatorRegex: data["is_separator_regex"],
-        separators: data["separators"],
-        keepSeparator: data["keep_separator"],
-      });
-    }
-    // Otherwise just set the attributes without setting indexEnabled=true
-    else {
-      if ("emb_model" in data) {
-        instance.embModel = data["emb_model"];
-      }
-      if ("vision_model" in data) {
-        instance.visionModel = data["vision_model"];
-      }
-      if ("max_chunk_size" in data) {
-        instance.maxChunkSize = data["max_chunk_size"];
-      }
-      if ("chunk_overlap" in data) {
-        instance.chunkOverlap = data["chunk_overlap"];
-      }
-      if ("is_separator_regex" in data) {
-        instance.isSeparatorRegex = data["is_separator_regex"];
-      }
-      if ("separators" in data) {
-        instance.separators = data["separators"];
-      }
-      if ("keep_separator" in data) {
-        instance.keepSeparator = data["keep_separator"];
-      }
+    if (!("mime_type" in data)) {
+      throw new Error("JSON data must include 'mime_type' under 'xImage'.");
     }
     
+    // Get data from database (can be URL or binary data)
+    // After processing, the data field contains the public URL  
+    const dataValue = data["data"];
+    const instance = new Image(dataValue || "");
+    
+    // Override the auto-detected mime_type with the one from database
+    instance.mimeType = data["mime_type"];
+    
+    // Set indexEnabled directly from database field (no validation needed)
+    instance.indexEnabled = data["index"] || false;
+    
+    // Set all attributes directly without calling enableIndex() since
+    // this data comes from database and was already validated server-side
+    if ("emb_model" in data) {
+      instance.embModel = data["emb_model"];
+    }
+    if ("vision_model" in data) {
+      instance.visionModel = data["vision_model"];
+    }
+    if ("max_chunk_size" in data) {
+      instance.maxChunkSize = data["max_chunk_size"];
+    }
+    if ("chunk_overlap" in data) {
+      instance.chunkOverlap = data["chunk_overlap"];
+    }
+    if ("is_separator_regex" in data) {
+      instance.isSeparatorRegex = data["is_separator_regex"];
+    }
+    if ("separators" in data) {
+      instance.separators = data["separators"];
+    }
+    if ("keep_separator" in data) {
+      instance.keepSeparator = data["keep_separator"];
+    }
+
     // Set chunks if they exist in the JSON
     if ("chunks" in data) {
       instance._chunks = data["chunks"] || [];
     }
     
-    // Set URL if it exists in the JSON
-    if ("url" in data) {
-      instance._url = data["url"];
-    }
-
     return instance;
   }
 
-  public static fromFile(file: File): Image {
-    return new Image(file);
-  }
-
-  public static fromBlob(blob: Blob, mimeType?: string): Image {
-    return new Image(blob, mimeType);
-  }
-
-  public static fromArrayBuffer(buffer: ArrayBuffer, mimeType: string): Image {
-    return new Image(buffer, mimeType);
-  }
-
-  public static fromBase64(base64Data: string, mimeType: string): Image {
-    return new Image(base64Data, mimeType);
-  }
-
   public toString(): string {
-    if (this._url) {
-      return `Image(${this._url})`;
+    // Check if data contains a URL
+    if (typeof this.data === 'string' && this.data.startsWith('http')) {
+      return `Image(${this.data})`;
     }
     if (this._chunks.length > 0) {
       return `Image("${this._chunks[0]}")`;

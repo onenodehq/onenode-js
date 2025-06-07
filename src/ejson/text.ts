@@ -1,4 +1,4 @@
-import { EmbModels } from "./embModels";
+import { Models } from "./models";
 
 export interface TextIndexOptions {
   embModel?: string;
@@ -19,12 +19,6 @@ export class Text {
   private separators: string[] | null;
   private keepSeparator: boolean | null;
   private indexEnabled: boolean;
-
-  private static SUPPORTED_EMB_MODELS: string[] = [
-    EmbModels.TEXT_EMBEDDING_3_SMALL,
-    EmbModels.TEXT_EMBEDDING_3_LARGE,
-    EmbModels.TEXT_EMBEDDING_ADA_002,
-  ];
 
   constructor(text: string) {
     if (!Text.isValidText(text)) {
@@ -85,10 +79,10 @@ export class Text {
   }
 
   private static isValidEmbModel(embModel: string): boolean {
-    return Text.SUPPORTED_EMB_MODELS.includes(embModel);
+    return Models.TextToEmbedding.OpenAI.values().includes(embModel);
   }
 
-  public toJSON(): Record<string, any> {
+  public serialize(): Record<string, any> {
     const result: Record<string, any> = {
       text: this.text,
       chunks: this.chunks,
@@ -120,7 +114,7 @@ export class Text {
     };
   }
 
-  public static fromJSON(data: Record<string, any>): Text {
+  static _deserialize(data: Record<string, any>): Text {
     // Check if the data is wrapped with 'xText'
     if ("xText" in data) {
       data = data["xText"];

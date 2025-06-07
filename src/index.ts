@@ -5,6 +5,8 @@ export { Text } from "./ejson/text";
 export type { TextIndexOptions } from "./ejson/text";
 export { Image } from "./ejson/image";
 export type { ImageIndexOptions } from "./ejson/image";
+export { Models } from "./ejson/models";
+// Keep backward compatibility
 export { EmbModels } from "./ejson/embModels";
 export { VisionModels } from "./ejson/visionModels";
 
