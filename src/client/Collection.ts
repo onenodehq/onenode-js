@@ -85,7 +85,11 @@ export class Collection {
   }
 
   private getCollectionUrl(): string {
-    return `https://api.onenode.ai/v0/db/${this.projectId}_${this.dbName}/collection/${this.collectionName}`;
+    if (this.isAnonymous) {
+      return `https://api.onenode.ai/v0/anon-project/${this.projectId}/db/${this.dbName}/collection/${this.collectionName}`;
+    } else {
+      return `https://api.onenode.ai/v0/project/${this.projectId}/db/${this.dbName}/collection/${this.collectionName}`;
+    }
   }
 
   private getHeaders(): HeadersInit {
@@ -341,10 +345,7 @@ export class Collection {
     limit?: number,
     skip?: number
   ): Promise<TDocument[]> {
-    let url = `${this.getCollectionUrl()}/document/find`;
-    if (this.isAnonymous) {
-      url += "/anon";
-    }
+    const url = `${this.getCollectionUrl()}/document/find`;
     const headers = this.getHeaders();
     
     const formData = new FormData();
@@ -386,10 +387,7 @@ export class Collection {
       includeValues?: boolean;
     }
   ): Promise<TQueryResult[]> {
-    let url = `${this.getCollectionUrl()}/query`;
-    if (this.isAnonymous) {
-      url += "/anon";
-    }
+    const url = `${this.getCollectionUrl()}/document/query`;
     const headers = this.getHeaders();
 
     const formData = new FormData();
@@ -426,7 +424,7 @@ export class Collection {
       throw new ClientRequestError(403, "Collection deletion is not allowed in anonymous mode.");
     }
     
-    const url = `https://api.onenode.ai/v0/db/${this.projectId}_${this.dbName}/collection/${this.collectionName}`;
+    const url = this.getCollectionUrl();
     const headers = this.getHeaders();
     
     const formData = new FormData();

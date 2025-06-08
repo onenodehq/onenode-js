@@ -6,7 +6,6 @@ export class OneNode {
   private projectId: string;
   private apiKey: string;
   private isAnonymous: boolean;
-  public readonly baseUrl: string;
 
   constructor() {
     this.projectId = process.env.ONENODE_PROJECT_ID || "";
@@ -28,7 +27,6 @@ export class OneNode {
       }
     }
 
-    this.baseUrl = `https://api.onenode.ai/${this.projectId}`.replace(/\/$/, "");
   }
 
   private getOrCreateAnonymousProjectId(): string {
