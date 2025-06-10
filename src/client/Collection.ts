@@ -13,8 +13,8 @@ import { Image } from "../ejson/image";
 type SerializerFunction = (v: any) => Record<string, any>;
 
 const BSON_SERIALIZERS: Record<string, SerializerFunction> = {
-  Text: (v: Text) => v.serialize(),
-  Image: (v: Image) => v.serialize(),
+  Text: (v: Text) => v._serialize(),
+  Image: (v: Image) => v._serialize(),
   ObjectId: (v: ObjectId) => ({ $oid: v.toString() }),
   Date: (v: Date) => ({ $date: v.toISOString() }),
   Decimal128: (v: Decimal128) => ({ $numberDecimal: v.toString() }),
@@ -120,11 +120,11 @@ export class Collection {
     }
 
     if (value instanceof Text) {
-      return value.serialize();
+      return value._serialize();
     }
 
     if (value instanceof Image) {
-      return value.serialize();
+      return value._serialize();
     }
 
     const constructor = (value as object).constructor;

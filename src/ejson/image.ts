@@ -309,7 +309,7 @@ export class Image {
     return null;
   }
 
-  public serialize(): Record<string, any> {
+  public _serialize(): Record<string, any> {
     // Start with required fields
     const result: Record<string, any> = {
       mime_type: this.mimeType,

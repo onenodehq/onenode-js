@@ -82,7 +82,7 @@ export class Text {
     return Models.TextToEmbedding.OpenAI.values().includes(embModel);
   }
 
-  public serialize(): Record<string, any> {
+  public _serialize(): Record<string, any> {
     const result: Record<string, any> = {
       text: this.text,
       chunks: this.chunks,
