@@ -1,4 +1,5 @@
 import { Models } from "./models";
+import * as fs from "fs";
 
 export interface ImageIndexOptions {
   embModel?: string;
@@ -34,7 +35,7 @@ export class Image {
   constructor(data: string | File | Blob | ArrayBuffer | Uint8Array) {
     // Handle different input types
     if (typeof data === "string") {
-      // String input - could be base64 or data URL
+      // String input - could be base64, data URL, HTTP URL, or file path
       if (data.startsWith("data:")) {
         // Data URL format
         const matches = data.match(/^data:([^;]+);base64,(.+)$/);
@@ -45,18 +46,30 @@ export class Image {
         this.data = base64Data;
         this.mimeType = urlMimeType;
       } else if (data.startsWith('http')) {
-        // URL input
+        // HTTP URL input
         this.data = data;
         // Try to extract mime type from URL extension
         this.mimeType = this.extractMimeTypeFromUrl(data);
       } else {
-        // Regular base64 string
-        if (!Image.isValidData(data)) {
-          throw new Error("Invalid data: must be a non-empty string containing valid base64-encoded image data.");
+        // Could be base64 string or file path - try base64 first
+        if (Image.isValidData(data)) {
+          // Valid base64 string
+          this.data = data;
+          // Extract mime type from base64 data
+          this.mimeType = this.extractMimeTypeFromBase64(data);
+        } else if (Image.isValidFilePath(data)) {
+          // Local file path - read the file
+          try {
+            const binaryData = fs.readFileSync(data);
+            this.data = new Uint8Array(binaryData);
+            // Extract mime type from binary data
+            this.mimeType = this.extractMimeTypeFromUint8Array(this.data as Uint8Array);
+          } catch (error: any) {
+            throw new Error(`Could not read file '${data}': ${error.message}`);
+          }
+        } else {
+          throw new Error("Invalid data: must be a non-empty string containing valid base64-encoded image data, HTTP URL, or valid file path.");
         }
-        this.data = data;
-        // Extract mime type from base64 data
-        this.mimeType = this.extractMimeTypeFromBase64(data);
       }
     } else if (data instanceof File) {
       // File input
@@ -75,7 +88,7 @@ export class Image {
       this.data = data;
       this.mimeType = this.extractMimeTypeFromUint8Array(data);
     } else {
-      throw new Error("Invalid data type: must be string (base64), File, Blob, ArrayBuffer, or Uint8Array");
+      throw new Error("Invalid data type: must be string (base64/data URL/HTTP URL/file path), File, Blob, ArrayBuffer, or Uint8Array");
     }
     
     // MIME type validation only matters when indexing
@@ -261,6 +274,10 @@ export class Image {
     }
     try {
       // Check if the string is valid base64
+      // Use stricter validation - base64 should only contain valid base64 characters
+      if (!/^[A-Za-z0-9+/]+=*$/.test(data)) {
+        return false;
+      }
       Buffer.from(data, "base64");
       return true;
     } catch {
@@ -398,5 +415,20 @@ export class Image {
       return `Image("${this._chunks[0]}")`;
     }
     return "Image(<raw data>)";
+  }
+
+  private static isValidFilePath(path: string): boolean {
+    if (!path || typeof path !== "string") {
+      return false;
+    }
+    
+    // Check if file exists and has a supported image extension
+    if (fs.existsSync(path)) {
+      const lowerPath = path.toLowerCase();
+      const supportedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+      return supportedExtensions.some(ext => lowerPath.endsWith(ext));
+    }
+    
+    return false;
   }
 } 
