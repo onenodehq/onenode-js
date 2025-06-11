@@ -92,6 +92,10 @@ export class Collection {
     }
   }
 
+  private getDocumentUrl(): string {
+    return `${this.getCollectionUrl()}/document`;
+  }
+
   private getHeaders(): HeadersInit {
     const headers: HeadersInit = {};
     if (!this.isAnonymous) {
@@ -268,7 +272,7 @@ export class Collection {
   }
 
   public async insert(documents: unknown[]): Promise<unknown> {
-    const url = this.getCollectionUrl();
+    const url = this.getDocumentUrl();
     const headers = this.getHeaders();
     const serializedDocs = documents.map((doc) => this.serialize(doc));
 
@@ -297,7 +301,7 @@ export class Collection {
     update: unknown,
     upsert = false
   ): Promise<unknown> {
-    const url = this.getCollectionUrl();
+    const url = this.getDocumentUrl();
     const headers = this.getHeaders();
     
     // Extract binary data for multipart form (from update data)
@@ -323,7 +327,7 @@ export class Collection {
   }
 
   public async delete(filter: unknown): Promise<unknown> {
-    const url = this.getCollectionUrl();
+    const url = this.getDocumentUrl();
     const headers = this.getHeaders();
     
     const formData = new FormData();
