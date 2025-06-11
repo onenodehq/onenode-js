@@ -424,10 +424,6 @@ export class Collection {
   }
 
   public async drop(): Promise<void> {
-    if (this.isAnonymous) {
-      throw new ClientRequestError(403, "Collection deletion is not allowed in anonymous mode.");
-    }
-    
     const url = this.getCollectionUrl();
     const headers = this.getHeaders();
     
