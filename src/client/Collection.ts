@@ -378,8 +378,8 @@ export class Collection {
       body: formData,
     });
 
-    const responseData = await this.handleResponse(response) as Record<string, unknown>;
-    return (responseData.docs || []) as TDocument[];
+    const responseData = await this.handleResponse(response);
+    return responseData as TDocument[];
   }
 
   /**
