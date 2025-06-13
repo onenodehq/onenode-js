@@ -398,7 +398,7 @@ export class Collection {
    * - chunk_n: Index of the chunk
    * - score: Similarity score (0-1)
    * - document: Full document containing the match
-   * - values: Embedding vector values (optional, when includeValues=true)
+   * - embedding: Embedding vector embedding (optional, when includeEmbedding=true)
    */
   public async query(
     query: string,
@@ -407,7 +407,7 @@ export class Collection {
       projection?: Record<string, unknown>;
       embModel?: string;
       topK?: number;
-      includeValues?: boolean;
+      includeEmbedding?: boolean;
     }
   ): Promise<QueryMatch[]> {
     const url = `${this.getCollectionUrl()}/document/query`;
@@ -428,8 +428,8 @@ export class Collection {
     if (options?.topK != null) {
       formData.append('top_k', String(options.topK));
     }
-    if (options?.includeValues != null) {
-      formData.append('include_values', String(options.includeValues));
+    if (options?.includeEmbedding != null) {
+      formData.append('include_embedding', String(options.includeEmbedding));
     }
 
     const response = await fetch(url, {

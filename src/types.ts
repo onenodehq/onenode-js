@@ -12,7 +12,7 @@
  * - match.chunk_n - Index of the chunk
  * - match.score - Similarity score (0-1)
  * - match.document - Full document containing the match
- * - match.values - Embedding vector values (optional, when includeValues=true)
+ * - match.embedding - Embedding vector embedding (optional, when includeEmbedding=true)
  */
 export interface QueryMatch {
   chunk: string;
@@ -20,7 +20,7 @@ export interface QueryMatch {
   chunk_n: number;
   score: number;
   document: Record<string, any>;
-  values?: number[];
+  embedding?: number[];
 }
 
 /**

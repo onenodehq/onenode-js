@@ -500,7 +500,7 @@ var Collection = /** @class */ (function () {
      * - chunk_n: Index of the chunk
      * - score: Similarity score (0-1)
      * - document: Full document containing the match
-     * - values: Embedding vector values (optional, when includeValues=true)
+     * - embedding: Embedding vector embedding (optional, when includeEmbedding=true)
      */
     Collection.prototype.query = function (query, options) {
         return __awaiter(this, void 0, void 0, function () {
@@ -524,8 +524,8 @@ var Collection = /** @class */ (function () {
                         if ((options === null || options === void 0 ? void 0 : options.topK) != null) {
                             formData.append('top_k', String(options.topK));
                         }
-                        if ((options === null || options === void 0 ? void 0 : options.includeValues) != null) {
-                            formData.append('include_values', String(options.includeValues));
+                        if ((options === null || options === void 0 ? void 0 : options.includeEmbedding) != null) {
+                            formData.append('include_embedding', String(options.includeEmbedding));
                         }
                         return [4 /*yield*/, fetch(url, {
                                 method: "POST",
