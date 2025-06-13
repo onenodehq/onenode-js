@@ -24,20 +24,12 @@ export interface QueryMatch {
 }
 
 /**
- * Complete response from a semantic search query.
- */
-export interface QueryResponse {
-  matches: QueryMatch[];
-}
-
-/**
  * Insert operation response structure.
  * Pre-defined fields accessible via natural dot notation:
  * - response.inserted_ids - Array of inserted document IDs
  */
 export interface InsertResponse {
   inserted_ids: string[];
-  [key: string]: any; // Allow other fields for extensibility
 }
 
 /**
