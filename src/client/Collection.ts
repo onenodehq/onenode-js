@@ -9,7 +9,7 @@ import {
 } from "bson";
 import { Text } from "../ejson/text";
 import { Image } from "../ejson/image";
-import { QueryMatch } from "../types";
+import { QueryMatch, InsertResponse } from "../types";
 
 type SerializerFunction = (v: any) => Record<string, any>;
 
@@ -272,7 +272,13 @@ export class Collection {
     }
   }
 
-  public async insert(documents: unknown[]): Promise<unknown> {
+  /**
+   * Insert documents into the collection.
+   * 
+   * Returns an InsertResponse object with natural dot notation access:
+   * - response.inserted_ids - Array of inserted document IDs
+   */
+  public async insert(documents: unknown[]): Promise<InsertResponse> {
     const url = this.getDocumentUrl();
     const headers = this.getHeaders();
     const serializedDocs = documents.map((doc) => this.serialize(doc));
@@ -294,7 +300,8 @@ export class Collection {
       body: formData,
     });
 
-    return this.handleResponse(response);
+    const responseData = await this.handleResponse(response);
+    return responseData as InsertResponse;
   }
 
   public async update(

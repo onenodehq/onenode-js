@@ -31,6 +31,16 @@ export interface QueryResponse {
 }
 
 /**
+ * Insert operation response structure.
+ * Pre-defined fields accessible via natural dot notation:
+ * - response.inserted_ids - Array of inserted document IDs
+ */
+export interface InsertResponse {
+  inserted_ids: string[];
+  [key: string]: any; // Allow other fields for extensibility
+}
+
+/**
  * Generic document type that supports dot notation naturally.
  * Use this for better TypeScript support with find() results.
  */
