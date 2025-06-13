@@ -1,36 +1,52 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Image = void 0;
-const models_1 = require("./models");
-class Image {
-    constructor(data) {
+var models_1 = require("./models");
+var fs = require("fs");
+var Image = /** @class */ (function () {
+    function Image(data) {
         // Handle different input types
         if (typeof data === "string") {
-            // String input - could be base64 or data URL
+            // String input - could be base64, data URL, HTTP URL, or file path
             if (data.startsWith("data:")) {
                 // Data URL format
-                const matches = data.match(/^data:([^;]+);base64,(.+)$/);
+                var matches = data.match(/^data:([^;]+);base64,(.+)$/);
                 if (!matches) {
                     throw new Error("Invalid data URL format. Expected format: data:image/type;base64,<data>");
                 }
-                const [, urlMimeType, base64Data] = matches;
+                var urlMimeType = matches[1], base64Data = matches[2];
                 this.data = base64Data;
                 this.mimeType = urlMimeType;
             }
             else if (data.startsWith('http')) {
-                // URL input
+                // HTTP URL input
                 this.data = data;
                 // Try to extract mime type from URL extension
                 this.mimeType = this.extractMimeTypeFromUrl(data);
             }
             else {
-                // Regular base64 string
-                if (!Image.isValidData(data)) {
-                    throw new Error("Invalid data: must be a non-empty string containing valid base64-encoded image data.");
+                // Could be base64 string or file path - try base64 first
+                if (Image.isValidData(data)) {
+                    // Valid base64 string
+                    this.data = data;
+                    // Extract mime type from base64 data
+                    this.mimeType = this.extractMimeTypeFromBase64(data);
                 }
-                this.data = data;
-                // Extract mime type from base64 data
-                this.mimeType = this.extractMimeTypeFromBase64(data);
+                else if (Image.isValidFilePath(data)) {
+                    // Local file path - read the file
+                    try {
+                        var binaryData = fs.readFileSync(data);
+                        this.data = new Uint8Array(binaryData);
+                        // Extract mime type from binary data
+                        this.mimeType = this.extractMimeTypeFromUint8Array(this.data);
+                    }
+                    catch (error) {
+                        throw new Error("Could not read file '".concat(data, "': ").concat(error.message));
+                    }
+                }
+                else {
+                    throw new Error("Invalid data: must be a non-empty string containing valid base64-encoded image data, HTTP URL, or valid file path.");
+                }
             }
         }
         else if (data instanceof File) {
@@ -54,7 +70,7 @@ class Image {
             this.mimeType = this.extractMimeTypeFromUint8Array(data);
         }
         else {
-            throw new Error("Invalid data type: must be string (base64), File, Blob, ArrayBuffer, or Uint8Array");
+            throw new Error("Invalid data type: must be string (base64/data URL/HTTP URL/file path), File, Blob, ArrayBuffer, or Uint8Array");
         }
         // MIME type validation only matters when indexing
         // so we don't validate it here anymore
@@ -69,8 +85,8 @@ class Image {
         this.keepSeparator = null;
         this.indexEnabled = false; // Default to false when index() isn't called
     }
-    extractMimeTypeFromUrl(url) {
-        const urlLower = url.toLowerCase();
+    Image.prototype.extractMimeTypeFromUrl = function (url) {
+        var urlLower = url.toLowerCase();
         if (urlLower.endsWith('.jpg') || urlLower.endsWith('.jpeg')) {
             return 'image/jpeg';
         }
@@ -87,9 +103,9 @@ class Image {
             // Default to JPEG if unable to determine
             return 'image/jpeg';
         }
-    }
-    extractMimeTypeFromFileName(fileName) {
-        const nameLower = fileName.toLowerCase();
+    };
+    Image.prototype.extractMimeTypeFromFileName = function (fileName) {
+        var nameLower = fileName.toLowerCase();
         if (nameLower.endsWith('.jpg') || nameLower.endsWith('.jpeg')) {
             return 'image/jpeg';
         }
@@ -105,32 +121,32 @@ class Image {
         else {
             return 'image/jpeg'; // Default
         }
-    }
-    extractMimeTypeFromBase64(base64Data) {
+    };
+    Image.prototype.extractMimeTypeFromBase64 = function (base64Data) {
         try {
             // Decode enough base64 data to get magic bytes (at least 16 bytes encoded = ~22 chars)
             // Use first 100 chars to be safe, which gives us plenty of decoded bytes
-            const sampleData = base64Data.length > 100 ? base64Data.substring(0, 100) : base64Data;
-            const binaryString = atob(sampleData);
-            const bytes = new Uint8Array(binaryString.length);
-            for (let i = 0; i < binaryString.length; i++) {
+            var sampleData = base64Data.length > 100 ? base64Data.substring(0, 100) : base64Data;
+            var binaryString = atob(sampleData);
+            var bytes = new Uint8Array(binaryString.length);
+            for (var i = 0; i < binaryString.length; i++) {
                 bytes[i] = binaryString.charCodeAt(i);
             }
             return this.extractMimeTypeFromBytes(bytes);
         }
-        catch {
+        catch (_a) {
             // Default to JPEG if unable to determine
             return 'image/jpeg';
         }
-    }
-    extractMimeTypeFromArrayBuffer(buffer) {
-        const bytes = new Uint8Array(buffer);
+    };
+    Image.prototype.extractMimeTypeFromArrayBuffer = function (buffer) {
+        var bytes = new Uint8Array(buffer);
         return this.extractMimeTypeFromBytes(bytes);
-    }
-    extractMimeTypeFromUint8Array(bytes) {
+    };
+    Image.prototype.extractMimeTypeFromUint8Array = function (bytes) {
         return this.extractMimeTypeFromBytes(bytes);
-    }
-    extractMimeTypeFromBytes(bytes) {
+    };
+    Image.prototype.extractMimeTypeFromBytes = function (bytes) {
         if (bytes.length < 4) {
             return 'image/jpeg'; // Default
         }
@@ -155,48 +171,49 @@ class Image {
             // Default to JPEG if unable to determine
             return 'image/jpeg';
         }
-    }
-    getData() {
+    };
+    Image.prototype.getData = function () {
         return this.data;
-    }
-    getBinaryData() {
+    };
+    Image.prototype.getBinaryData = function () {
         return typeof this.data === "string" ? null : this.data;
-    }
-    getBase64Data() {
+    };
+    Image.prototype.getBase64Data = function () {
         // Return base64 data only if it's a string and not a URL
         if (typeof this.data === "string" && !this.data.startsWith('http')) {
             return this.data;
         }
         return null;
-    }
-    hasBinaryData() {
+    };
+    Image.prototype.hasBinaryData = function () {
         // Consider URL strings as processed data, not binary
         if (typeof this.data === "string") {
             return this.data.startsWith('http'); // URL is considered as processed data
         }
         return true; // Non-string data is binary
-    }
-    enableIndex(options = {}) {
+    };
+    Image.prototype.enableIndex = function (options) {
+        if (options === void 0) { options = {}; }
         // Set index to true when this method is called
         this.indexEnabled = true;
         // MIME type validation happens here when indexing is enabled
         if (!Image.isValidMimeType(this.mimeType)) {
-            const supportedList = Image.SUPPORTED_MIME_TYPES.join(", ");
-            throw new Error(`Unsupported mime type: '${this.mimeType}'. Supported types are: ${supportedList}`);
+            var supportedList = Image.SUPPORTED_MIME_TYPES.join(", ");
+            throw new Error("Unsupported mime type: '".concat(this.mimeType, "'. Supported types are: ").concat(supportedList));
         }
         // Validate and set embedding model if provided
         if (options.embModel !== undefined) {
             if (!Image.isValidEmbModel(options.embModel)) {
-                const supportedList = models_1.Models.TextToEmbedding.OpenAI.values().join(", ");
-                throw new Error(`Invalid embedding model: '${options.embModel}' is not supported. Supported models are: ${supportedList}`);
+                var supportedList = models_1.Models.TextToEmbedding.OpenAI.values().join(", ");
+                throw new Error("Invalid embedding model: '".concat(options.embModel, "' is not supported. Supported models are: ").concat(supportedList));
             }
             this.embModel = options.embModel;
         }
         // Validate and set vision model if provided
         if (options.visionModel !== undefined) {
             if (!Image.isValidVisionModel(options.visionModel)) {
-                const supportedList = models_1.Models.ImageToText.OpenAI.values().join(", ");
-                throw new Error(`Invalid vision model: '${options.visionModel}' is not supported. Supported models are: ${supportedList}`);
+                var supportedList = models_1.Models.ImageToText.OpenAI.values().join(", ");
+                throw new Error("Invalid vision model: '".concat(options.visionModel, "' is not supported. Supported models are: ").concat(supportedList));
             }
             this.visionModel = options.visionModel;
         }
@@ -217,8 +234,8 @@ class Image {
             this.keepSeparator = options.keepSeparator;
         }
         return this;
-    }
-    static isValidData(data) {
+    };
+    Image.isValidData = function (data) {
         if (typeof data !== "string" || data.trim().length === 0) {
             return false;
         }
@@ -228,35 +245,47 @@ class Image {
         }
         try {
             // Check if the string is valid base64
+            // Use stricter validation - base64 should only contain valid base64 characters
+            if (!/^[A-Za-z0-9+/]+=*$/.test(data)) {
+                return false;
+            }
             Buffer.from(data, "base64");
             return true;
         }
-        catch {
+        catch (_a) {
             return false;
         }
-    }
-    static isValidMimeType(mimeType) {
+    };
+    Image.isValidMimeType = function (mimeType) {
         return Image.SUPPORTED_MIME_TYPES.includes(mimeType);
-    }
-    static isValidEmbModel(embModel) {
+    };
+    Image.isValidEmbModel = function (embModel) {
         return models_1.Models.TextToEmbedding.OpenAI.values().includes(embModel);
-    }
-    static isValidVisionModel(visionModel) {
+    };
+    Image.isValidVisionModel = function (visionModel) {
         return models_1.Models.ImageToText.OpenAI.values().includes(visionModel);
-    }
-    get chunks() {
-        return this._chunks;
-    }
-    get url() {
-        // Check if data contains a URL
-        if (typeof this.data === 'string' && this.data.startsWith('http')) {
-            return this.data;
-        }
-        return null;
-    }
-    serialize() {
+    };
+    Object.defineProperty(Image.prototype, "chunks", {
+        get: function () {
+            return this._chunks;
+        },
+        enumerable: false,
+        configurable: true
+    });
+    Object.defineProperty(Image.prototype, "url", {
+        get: function () {
+            // Check if data contains a URL
+            if (typeof this.data === 'string' && this.data.startsWith('http')) {
+                return this.data;
+            }
+            return null;
+        },
+        enumerable: false,
+        configurable: true
+    });
+    Image.prototype._serialize = function () {
         // Start with required fields
-        const result = {
+        var result = {
             mime_type: this.mimeType,
             index: this.indexEnabled, // Always include index flag
         };
@@ -292,8 +321,8 @@ class Image {
         return {
             "xImage": result
         };
-    }
-    static _deserialize(data) {
+    };
+    Image._deserialize = function (data) {
         // Check if the data is wrapped with 'xImage'
         if ("xImage" in data) {
             data = data["xImage"];
@@ -303,8 +332,8 @@ class Image {
         }
         // Get data from database (can be URL or binary data)
         // After processing, the data field contains the public URL  
-        const dataValue = data["data"];
-        const instance = new Image(dataValue || "");
+        var dataValue = data["data"];
+        var instance = new Image(dataValue || "");
         // Override the auto-detected mime_type with the one from database
         instance.mimeType = data["mime_type"];
         // Set indexEnabled directly from database field (no validation needed)
@@ -337,23 +366,36 @@ class Image {
             instance._chunks = data["chunks"] || [];
         }
         return instance;
-    }
-    toString() {
+    };
+    Image.prototype.toString = function () {
         // Check if data contains a URL
         if (typeof this.data === 'string' && this.data.startsWith('http')) {
-            return `Image(${this.data})`;
+            return "Image(".concat(this.data, ")");
         }
         if (this._chunks.length > 0) {
-            return `Image("${this._chunks[0]}")`;
+            return "Image(\"".concat(this._chunks[0], "\")");
         }
         return "Image(<raw data>)";
-    }
-}
+    };
+    Image.isValidFilePath = function (path) {
+        if (!path || typeof path !== "string") {
+            return false;
+        }
+        // Check if file exists and has a supported image extension
+        if (fs.existsSync(path)) {
+            var lowerPath_1 = path.toLowerCase();
+            var supportedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+            return supportedExtensions.some(function (ext) { return lowerPath_1.endsWith(ext); });
+        }
+        return false;
+    };
+    Image.SUPPORTED_MIME_TYPES = [
+        "image/jpeg",
+        "image/jpg",
+        "image/png",
+        "image/gif",
+        "image/webp",
+    ];
+    return Image;
+}());
 exports.Image = Image;
-Image.SUPPORTED_MIME_TYPES = [
-    "image/jpeg",
-    "image/jpg",
-    "image/png",
-    "image/gif",
-    "image/webp",
-];

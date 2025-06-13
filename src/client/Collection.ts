@@ -9,6 +9,7 @@ import {
 } from "bson";
 import { Text } from "../ejson/text";
 import { Image } from "../ejson/image";
+import { QueryMatch } from "../types";
 
 type SerializerFunction = (v: any) => Record<string, any>;
 
@@ -381,7 +382,18 @@ export class Collection {
     return (responseData.docs || []) as TDocument[];
   }
 
-  public async query<TQueryResult = Record<string, any>>(
+  /**
+   * Perform semantic search on the collection.
+   * 
+   * Returns an array of QueryMatch objects with the following structure:
+   * - chunk: Text chunk that matched the query
+   * - path: Document field path where the match was found
+   * - chunk_n: Index of the chunk
+   * - score: Similarity score (0-1)
+   * - document: Full document containing the match
+   * - values: Embedding vector values (optional, when includeValues=true)
+   */
+  public async query(
     query: string,
     options?: {
       filter?: Record<string, unknown>;
@@ -390,7 +402,7 @@ export class Collection {
       topK?: number;
       includeValues?: boolean;
     }
-  ): Promise<TQueryResult[]> {
+  ): Promise<QueryMatch[]> {
     const url = `${this.getCollectionUrl()}/document/query`;
     const headers = this.getHeaders();
 
@@ -419,8 +431,16 @@ export class Collection {
       body: formData,
     });
 
-    const responseData = await this.handleResponse(response) as Record<string, unknown>;
-    return (responseData.matches || []) as TQueryResult[];
+    const responseData = await this.handleResponse(response);
+    
+    // The API returns a list of matches directly, not wrapped in an object
+    if (Array.isArray(responseData)) {
+      return responseData as QueryMatch[];
+    } else {
+      // Fallback for backward compatibility
+      const dataAsObject = responseData as Record<string, unknown>;
+      return (dataAsObject.matches || []) as QueryMatch[];
+    }
   }
 
   public async drop(): Promise<void> {

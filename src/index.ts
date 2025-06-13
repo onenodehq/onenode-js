@@ -10,6 +10,9 @@ export { Models } from "./ejson/models";
 export { EmbModels } from "./ejson/embModels";
 export { VisionModels } from "./ejson/visionModels";
 
+// Type definitions
+export type { QueryMatch, QueryResponse, Document } from "./types";
+
 export {
   ObjectId,
   Binary,

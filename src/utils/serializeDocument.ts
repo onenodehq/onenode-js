@@ -7,11 +7,11 @@ export function serializeDocument(document: any): any {
   }
 
   if (document instanceof Text) {
-    return document.serialize();
+    return document._serialize();
   }
   
   if (document instanceof Image) {
-    return document.serialize();
+    return document._serialize();
   }
 
   if (typeof document === "object" && document !== null) {
