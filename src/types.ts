@@ -7,7 +7,7 @@
 /**
  * Query match response structure.
  * Pre-defined fields accessible via natural dot notation:
- * - match.chunk - Text chunk that matched the query
+ * - match.chunk - Text chunk that matched the query (excluded when null/empty)
  * - match.path - Document field path  
  * - match.chunk_n - Index of the chunk
  * - match.score - Similarity score (0-1)
@@ -15,7 +15,7 @@
  * - match.embedding - Embedding vector embedding (optional, when includeEmbedding=true)
  */
 export interface QueryMatch {
-  chunk: string;
+  chunk?: string;
   path: string;
   chunk_n: number;
   score: number;

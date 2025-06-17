@@ -440,14 +440,25 @@ export class Collection {
 
     const responseData = await this.handleResponse(response);
     
+    let matches: QueryMatch[];
+    
     // The API returns a list of matches directly, not wrapped in an object
     if (Array.isArray(responseData)) {
-      return responseData as QueryMatch[];
+      matches = responseData as QueryMatch[];
     } else {
       // Fallback for backward compatibility
       const dataAsObject = responseData as Record<string, unknown>;
-      return (dataAsObject.matches || []) as QueryMatch[];
+      matches = (dataAsObject.matches || []) as QueryMatch[];
     }
+    
+    // Remove chunk field when it's null or undefined to clean up the response
+    return matches.map(match => {
+      if (match.chunk == null || match.chunk === '') {
+        const { chunk, ...matchWithoutChunk } = match;
+        return matchWithoutChunk as QueryMatch;
+      }
+      return match;
+    });
   }
 
   public async drop(): Promise<void> {
