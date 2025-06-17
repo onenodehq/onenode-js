@@ -279,6 +279,33 @@ export class Collection {
    * - response.inserted_ids - Array of inserted document IDs
    */
   public async insert(documents: unknown[]): Promise<InsertResponse> {
+    // Validate input
+    if (!Array.isArray(documents)) {
+      throw new ClientRequestError(
+        400,
+        `'documents' must be an array of objects, but got ${typeof documents}. ` +
+        `If you're trying to insert a single document, wrap it in an array: [document]`
+      );
+    }
+    
+    if (documents.length === 0) {
+      throw new ClientRequestError(
+        400,
+        "Cannot insert empty array of documents. Provide at least one document."
+      );
+    }
+    
+    for (let i = 0; i < documents.length; i++) {
+      const document = documents[i];
+      if (typeof document !== 'object' || document === null || Array.isArray(document)) {
+        throw new ClientRequestError(
+          400,
+          `Invalid document at index ${i}. Expected an object, but received ${Array.isArray(document) ? 'array' : typeof document}. ` +
+          `Each document must be a JSON object.`
+        );
+      }
+    }
+    
     const url = this.getDocumentUrl();
     const headers = this.getHeaders();
     const serializedDocs = documents.map((doc) => this.serialize(doc));
