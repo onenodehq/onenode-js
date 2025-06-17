@@ -451,11 +451,10 @@ export class Collection {
       matches = (dataAsObject.matches || []) as QueryMatch[];
     }
     
-    // Remove chunk field when it's null or undefined to clean up the response
+    // Keep chunk field as null when it's null/undefined (don't remove it)
     return matches.map(match => {
-      if (match.chunk == null || match.chunk === '') {
-        const { chunk, ...matchWithoutChunk } = match;
-        return matchWithoutChunk as QueryMatch;
+      if (match.chunk === '') {
+        return { ...match, chunk: null };
       }
       return match;
     });
