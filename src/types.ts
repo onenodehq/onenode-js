@@ -5,6 +5,21 @@
  */
 
 /**
+ * OneNode-style projection configuration.
+ * Controls which fields are returned in query results.
+ * 
+ * Examples:
+ * - { mode: "include", fields: ["name", "email"] } - Return only name and email
+ * - { mode: "exclude", fields: ["password"] } - Return all except password
+ * - { mode: "include" } - Return entire document
+ * - { mode: "exclude" } - Return only _id field
+ */
+export interface Projection {
+  mode: "include" | "exclude";
+  fields?: string[];
+}
+
+/**
  * Query match response structure.
  * Pre-defined fields accessible via natural dot notation:
  * - match.chunk - Text chunk that matched the query (null when excluded by projection)

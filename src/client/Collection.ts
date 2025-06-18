@@ -9,7 +9,7 @@ import {
 } from "bson";
 import { Text } from "../ejson/text";
 import { Image } from "../ejson/image";
-import { QueryMatch, InsertResponse } from "../types";
+import { QueryMatch, InsertResponse, Projection } from "../types";
 
 type SerializerFunction = (v: any) => Record<string, any>;
 
@@ -377,9 +377,34 @@ export class Collection {
     return this.handleResponse(response);
   }
 
+  /**
+   * Find documents matching filter.
+   * 
+   * @param filter - A query object to match documents (MongoDB-style filter syntax)
+   * @param projection - OneNode-style projection object to control returned fields.
+   *                    Must be in format: { mode: "include"|"exclude", fields?: string[] }
+   *                    Examples:
+   *                    - { mode: "include", fields: ["name", "age"] } - Return only name and age
+   *                    - { mode: "exclude", fields: ["password"] } - Return all except password
+   *                    - { mode: "include" } - Return entire document
+   *                    - { mode: "exclude" } - Return only _id field
+   * @param sort - Sort specification (e.g., { age: -1 } for descending by age)
+   * @param limit - Maximum number of documents to return
+   * @param skip - Number of documents to skip (for pagination)
+   * @returns Promise resolving to array of matching documents
+   * 
+   * @example
+   * // Find all users over 25, returning only name and email
+   * const users = await collection.find(
+   *   { age: { $gt: 25 } },
+   *   { mode: "include", fields: ["name", "email"] },
+   *   { age: -1 },
+   *   10
+   * );
+   */
   public async find<TDocument = Record<string, any>>(
     filter: unknown,
-    projection?: unknown,
+    projection?: Projection,
     sort?: unknown,
     limit?: number,
     skip?: number
@@ -419,19 +444,40 @@ export class Collection {
   /**
    * Perform semantic search on the collection.
    * 
-   * Returns an array of QueryMatch objects with the following structure:
-   * - chunk: Text chunk that matched the query
-   * - path: Document field path where the match was found
-   * - chunk_n: Index of the chunk
-   * - score: Similarity score (0-1)
-   * - document: Full document containing the match
-   * - embedding: Embedding vector embedding (optional, when includeEmbedding=true)
+   * @param query - Text query for semantic search
+   * @param options - Optional configuration object
+   * @param options.filter - MongoDB-style filter to narrow search results
+   * @param options.projection - OneNode-style projection object to control returned fields.
+   *                           Must be in format: { mode: "include"|"exclude", fields?: string[] }
+   *                           Examples:
+   *                           - { mode: "include", fields: ["title", "content"] } - Return only title and content
+   *                           - { mode: "exclude", fields: ["metadata"] } - Return all except metadata
+   * @param options.embModel - Embedding model to use (defaults to "text-embedding-3-small")
+   * @param options.topK - Maximum number of results to return (defaults to 10)
+   * @param options.includeEmbedding - Whether to include embedding vectors in response
+   * @returns Promise resolving to array of QueryMatch objects with the following structure:
+   *          - chunk: Text chunk that matched the query
+   *          - path: Document field path where the match was found
+   *          - chunk_n: Index of the chunk
+   *          - score: Similarity score (0-1)
+   *          - document: Full document containing the match
+   *          - embedding: Embedding vector embedding (optional, when includeEmbedding=true)
+   * 
+   * @example
+   * // Search for AI content, returning only title and summary
+   * const results = await collection.query(
+   *   "artificial intelligence machine learning",
+   *   {
+   *     projection: { mode: "include", fields: ["title", "summary"] },
+   *     topK: 5
+   *   }
+   * );
    */
   public async query(
     query: string,
     options?: {
       filter?: Record<string, unknown>;
-      projection?: Record<string, unknown>;
+      projection?: Projection;
       embModel?: string;
       topK?: number;
       includeEmbedding?: boolean;
