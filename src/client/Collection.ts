@@ -331,10 +331,19 @@ export class Collection {
     return responseData as InsertResponse;
   }
 
+  /**
+   * Update documents matching filter.
+   * 
+   * @param filter - Query object to match documents for updating
+   * @param update - Update operations to apply to matched documents
+   * @param options - Optional configuration object
+   * @param options.upsert - Whether to insert a new document if no match is found (defaults to false)
+   * @returns Promise resolving to update operation result
+   */
   public async update(
     filter: unknown,
     update: unknown,
-    upsert = false
+    { upsert = false }: { upsert?: boolean } = {}
   ): Promise<unknown> {
     const url = this.getDocumentUrl();
     const headers = this.getHeaders();
@@ -381,54 +390,63 @@ export class Collection {
    * Find documents matching filter.
    * 
    * @param filter - A query object to match documents (MongoDB-style filter syntax)
-   * @param projection - OneNode-style projection object to control returned fields.
-   *                    Must be in format: { mode: "include"|"exclude", fields?: string[] }
-   *                    Examples:
-   *                    - { mode: "include", fields: ["name", "age"] } - Return only name and age
-   *                    - { mode: "exclude", fields: ["password"] } - Return all except password
-   *                    - { mode: "include" } - Return entire document
-   *                    - { mode: "exclude" } - Return only _id field
-   * @param sort - Sort specification (e.g., { age: -1 } for descending by age)
-   * @param limit - Maximum number of documents to return
-   * @param skip - Number of documents to skip (for pagination)
+   * @param options - Optional configuration object
+   * @param options.projection - OneNode-style projection object to control returned fields.
+   *                           Must be in format: { mode: "include"|"exclude", fields?: string[] }
+   *                           Examples:
+   *                           - { mode: "include", fields: ["name", "age"] } - Return only name and age
+   *                           - { mode: "exclude", fields: ["password"] } - Return all except password
+   *                           - { mode: "include" } - Return entire document
+   *                           - { mode: "exclude" } - Return only _id field
+   * @param options.sort - Sort specification (e.g., { age: -1 } for descending by age)
+   * @param options.limit - Maximum number of documents to return
+   * @param options.skip - Number of documents to skip (for pagination)
    * @returns Promise resolving to array of matching documents
    * 
    * @example
    * // Find all users over 25, returning only name and email
    * const users = await collection.find(
    *   { age: { $gt: 25 } },
-   *   { mode: "include", fields: ["name", "email"] },
-   *   { age: -1 },
-   *   10
+   *   {
+   *     projection: { mode: "include", fields: ["name", "email"] },
+   *     sort: { age: -1 },
+   *     limit: 10
+   *   }
    * );
    */
   public async find<TDocument = Record<string, any>>(
     filter: unknown,
-    projection?: Projection,
-    sort?: unknown,
-    limit?: number,
-    skip?: number
+    options?: {
+      projection?: Projection;
+      sort?: unknown;
+      limit?: number;
+      skip?: number;
+    }
   ): Promise<TDocument[]> {
     const url = `${this.getCollectionUrl()}/document/find`;
     const headers = this.getHeaders();
     
     const formData = new FormData();
-    formData.append('filter', JSON.stringify(this.serialize(filter)));
-    
-    if (projection !== undefined) {
-      formData.append('projection', JSON.stringify(projection));
+    // Only send filter if it has actual content (not null, undefined, or empty object)
+    if (filter != null && typeof filter === 'object' && Object.keys(filter).length > 0) {
+      const serializedFilter = JSON.stringify(this.serialize(filter));
+      formData.append('filter', serializedFilter);
     }
     
-    if (sort !== undefined) {
-      formData.append('sort', JSON.stringify(sort));
+    if (options?.projection !== undefined) {
+      formData.append('projection', JSON.stringify(options.projection));
     }
     
-    if (limit !== undefined) {
-      formData.append('limit', String(limit));
+    if (options?.sort !== undefined) {
+      formData.append('sort', JSON.stringify(options.sort));
     }
     
-    if (skip !== undefined) {
-      formData.append('skip', String(skip));
+    if (options?.limit !== undefined) {
+      formData.append('limit', String(options.limit));
+    }
+    
+    if (options?.skip !== undefined) {
+      formData.append('skip', String(options.skip));
     }
 
     const response = await fetch(url, {
