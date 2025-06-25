@@ -301,14 +301,6 @@ export class Image {
     return this._chunks;
   }
 
-  public get url(): string | null {
-    // Check if data contains a URL
-    if (typeof this.data === 'string' && this.data.startsWith('http')) {
-      return this.data;
-    }
-    return null;
-  }
-
   public _serialize(): Record<string, any> {
     // Start with required fields
     const result: Record<string, any> = {
