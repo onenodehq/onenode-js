@@ -1,5 +1,4 @@
 import { Models } from "./models";
-import * as fs from "fs";
 
 export interface ImageIndexOptions {
   embModel?: string;
@@ -32,6 +31,11 @@ export class Image {
     "image/webp",
   ];
 
+  // Helper method to check if we're in Node.js environment
+  private static isNodeEnvironment(): boolean {
+    return typeof process !== 'undefined' && process.versions && !!process.versions.node;
+  }
+
   constructor(data: string | File | Blob | ArrayBuffer | Uint8Array) {
     // Handle different input types
     if (typeof data === "string") {
@@ -58,8 +62,13 @@ export class Image {
           // Extract mime type from base64 data
           this.mimeType = this.extractMimeTypeFromBase64(data);
         } else if (Image.isValidFilePath(data)) {
-          // Local file path - read the file
+          // Local file path - read the file (only in Node.js environment)
+          if (!Image.isNodeEnvironment()) {
+            throw new Error("File path input is only supported in Node.js environment. In browsers, use File, Blob, or base64 data instead.");
+          }
           try {
+            // Dynamic import of fs only when needed and in Node.js
+            const fs = require('fs');
             const binaryData = fs.readFileSync(data);
             this.data = new Uint8Array(binaryData);
             // Extract mime type from binary data
@@ -415,10 +424,13 @@ export class Image {
     }
     
     // Check if file exists and has a supported image extension
-    if (fs.existsSync(path)) {
-      const lowerPath = path.toLowerCase();
-      const supportedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
-      return supportedExtensions.some(ext => lowerPath.endsWith(ext));
+    if (Image.isNodeEnvironment()) {
+      const fs = require('fs');
+      if (fs.existsSync(path)) {
+        const lowerPath = path.toLowerCase();
+        const supportedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+        return supportedExtensions.some(ext => lowerPath.endsWith(ext));
+      }
     }
     
     return false;

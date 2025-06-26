@@ -1,13 +1,26 @@
 import { Database } from "./Database";
 import { ObjectId } from "bson";
-import * as fs from "fs";
 
 export class OneNode {
   private projectId: string;
   private apiKey: string;
   private isAnonymous: boolean;
 
+  // Helper method to check if we're in Node.js environment
+  private static isNodeEnvironment(): boolean {
+    return typeof process !== 'undefined' && process.versions && !!process.versions.node;
+  }
+
   constructor() {
+    // Check if we're in a browser environment and throw an error
+    if (!OneNode.isNodeEnvironment()) {
+      throw new Error(
+        "OneNode client can only be initialized in Node.js server-side environments. " +
+        "It requires access to environment variables and file system operations that are not available in browsers. " +
+        "Please use this client in your backend/server code only."
+      );
+    }
+
     this.projectId = process.env.ONENODE_PROJECT_ID || "";
     this.apiKey = process.env.ONENODE_API_KEY || "";
     this.isAnonymous = false;
@@ -31,6 +44,7 @@ export class OneNode {
 
   private getOrCreateAnonymousProjectId(): string {
     const anonFilePath = ".onenode";
+    const fs = require('fs'); // Dynamic import since we know we're in Node.js at this point
 
     // Try to load existing project ID
     if (fs.existsSync(anonFilePath)) {
