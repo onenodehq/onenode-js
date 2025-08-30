@@ -69,28 +69,21 @@ export class Collection {
   private readonly projectId: string;
   private readonly dbName: string;
   private readonly collectionName: string;
-  private readonly isAnonymous: boolean;
   
   constructor(
     apiKey: string,
     projectId: string,
     dbName: string,
-    collectionName: string,
-    isAnonymous: boolean = false
+    collectionName: string
   ) {
     this.apiKey = apiKey;
     this.projectId = projectId;
     this.dbName = dbName;
     this.collectionName = collectionName;
-    this.isAnonymous = isAnonymous;
   }
 
   private getCollectionUrl(): string {
-    if (this.isAnonymous) {
-      return `https://api.onenode.ai/v0/anon-project/${this.projectId}/db/${this.dbName}/collection/${this.collectionName}`;
-    } else {
-      return `https://api.onenode.ai/v0/project/${this.projectId}/db/${this.dbName}/collection/${this.collectionName}`;
-    }
+    return `https://api.onenode.ai/v0/project/${this.projectId}/db/${this.dbName}/collection/${this.collectionName}`;
   }
 
   private getDocumentUrl(): string {
@@ -98,11 +91,9 @@ export class Collection {
   }
 
   private getHeaders(): HeadersInit {
-    const headers: HeadersInit = {};
-    if (!this.isAnonymous) {
-      headers.Authorization = `Bearer ${this.apiKey}`;
-    }
-    return headers;
+    return {
+      Authorization: `Bearer ${this.apiKey}`
+    };
   }
 
   private serialize(value: unknown, depth = 0): unknown {
